@@ -6,6 +6,7 @@ const multer = require('multer')
 
 // CONTROLLER
 const user = require("./controller/user");
+const product = require("./controller/product");
 
 
 // middleware for the multer setup
@@ -102,5 +103,10 @@ route.get("/getCustomer", AuthJwt, upload, user.getCustomer);
 
 // update user
 route.patch("/updateCustomer", AuthJwt, upload, user.updateCustomer);
+
+// =================== Product routes =======================
+
+// listing product 
+route.get("/getProducts",AuthJwt,product.getProducts)
 
 module.exports = route;
