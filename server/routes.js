@@ -7,6 +7,7 @@ const multer = require('multer')
 // CONTROLLER
 const user = require("./controller/user");
 const product = require("./controller/product");
+const cart = require("./controller/cart");
 
 
 // middleware for the multer setup
@@ -108,5 +109,22 @@ route.patch("/updateCustomer", AuthJwt, upload, user.updateCustomer);
 
 // listing product 
 route.get("/getProducts",AuthJwt,product.getProducts)
+
+// ==================== Cart routes ==========================
+
+// add item in cart 
+route.post("/addCartItem",AuthJwt, cart.addCartItem)
+
+// romove item from cart 
+route.get("/removeCartItem",AuthJwt, cart.removeCartItem)
+
+// get item in cart 
+route.get("/getCartItem", cart.getCartItem)
+
+// get item details in cart 
+route.get("/getProductDetails",AuthJwt, cart.getProductDetails)
+
+// update item details in cart 
+route.patch("/updateQuantity",AuthJwt, cart.updateQuantity)
 
 module.exports = route;
