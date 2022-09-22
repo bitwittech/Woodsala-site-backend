@@ -2,7 +2,7 @@ const product = require('../../database/models/product');
 
 
 // for getting the list of the product
-exports.getProducts = (req,res)=>{
+exports.getProducts = async (req,res)=>{
 
     product.find({},{
         product_title : 1,
@@ -21,3 +21,16 @@ exports.getProducts = (req,res)=>{
 
 }
 
+
+// for product detail to show 
+exports.getProductDetails = async (req,res)=>{
+    
+    if (req.query === {}) return res.status(404).send({message : 'Please Provide the product id.'})
+    await product.findOne(req.query)
+    .then((data)=>{
+          
+        return res.send(data)
+    })
+    .catch((err)=> {return res.send({message : 'Somthing went wrang !!!'})})
+
+}

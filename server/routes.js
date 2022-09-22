@@ -57,10 +57,10 @@ function encode(req, res, next) {
 
     bcrypt.genSalt(saltRounds, (err, salt) => {
         bcrypt.hash(req.body.password, salt, function(err, hash) {
-            // console.log(">>>>>", hash);
+            // async (req,res)(">>>>>", hash);
             if (hash !== null) {
                 req.body.password = hash;
-                console.log(req.body.password);
+                async (req,res)(req.body.password);
                 next();
             }
         });
@@ -75,7 +75,7 @@ route.use(bodyParser.json());
 // middleware For Authentication
 
 function AuthJwt(req, res, next) {
-    // console.log(req.headers)
+    // //async (req,res)(req.headers)
 
     if (req.headers.authorization === undefined) return res.sendStatus(401);
 
@@ -100,7 +100,7 @@ route.post("/register", encode, user.register);
 route.post("/login", upload, user.login);
 
 // get user
-route.get("/getCustomer", AuthJwt, upload, user.getCustomer);
+route.get("/getCustomer", user.getCustomer);
 
 // update user
 route.patch("/updateCustomer", AuthJwt, upload, user.updateCustomer);
@@ -108,21 +108,24 @@ route.patch("/updateCustomer", AuthJwt, upload, user.updateCustomer);
 // =================== Product routes =======================
 
 // listing product 
-route.get("/getProducts",AuthJwt,product.getProducts)
+route.get("/getProducts",product.getProducts)
+
+// get details product 
+route.get("/getProductDetails",product.getProductDetails)
 
 // ==================== Cart routes ==========================
 
 // add item in cart 
 route.post("/addCartItem",AuthJwt, cart.addCartItem)
 
-// romove item from cart 
-route.get("/removeCartItem",AuthJwt, cart.removeCartItem)
+// remove item from cart 
+route.get("/removeCartItem", cart.removeCartItem)
 
 // get item in cart 
 route.get("/getCartItem", cart.getCartItem)
 
 // get item details in cart 
-route.get("/getProductDetails",AuthJwt, cart.getProductDetails)
+route.get("/getDetails", cart.getDetails)
 
 // update item details in cart 
 route.patch("/updateQuantity",AuthJwt, cart.updateQuantity)

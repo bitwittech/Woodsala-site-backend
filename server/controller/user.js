@@ -21,7 +21,7 @@ exports.home = (req, res) => {
 
 exports.register = async(req,res) => {   
     req.body.CID = `CID-${uuidv4()}`
-    console.log(req.body);
+    //console.log(req.body);
    const data = userDB(req.body);
     await data.save(req.body)
     .then((response)=>{
@@ -41,7 +41,7 @@ function generateJWT(data) {
 }
 
 // login
-exports.login = (req, res) => {
+exports.login = async(req, res) => {
 
     console.log(req.body)
     if (req.body.email === undefined || req.body.password === undefined) return res.status(203).send('Please provides the vaild data')
@@ -74,10 +74,10 @@ exports.login = (req, res) => {
 }
 
 // get customer
-exports.getCustomer = (req,res) =>{
-    userDB.findOne({CID : req.query.CID})
+exports.getCustomer = async(req,res) =>{
+    userDB.findOne({CID : req.query.CID},{_id : 0,password : 0})
     .then((data)=>{
-        // console.log(data)
+        console.log(data)
         return res.status(200).send(data)
     })
     .catch((err)=>{
@@ -88,7 +88,7 @@ exports.getCustomer = (req,res) =>{
 }
 
 // update Customer
-exports.updateCustomer = (req,res) =>{
+exports.updateCustomer = async(req,res) =>{
     console.log('FILES >>> ',req.files)
     console.log('Body >>> ',req.body)
     userDB.updateOne({CID : req.body.CID},req.body)
