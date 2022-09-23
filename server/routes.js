@@ -60,7 +60,6 @@ function encode(req, res, next) {
             // async (req,res)(">>>>>", hash);
             if (hash !== null) {
                 req.body.password = hash;
-                async (req,res)(req.body.password);
                 next();
             }
         });
