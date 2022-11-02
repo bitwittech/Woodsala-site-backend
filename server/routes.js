@@ -101,6 +101,9 @@ route.post("/login", upload, user.login);
 // get user
 route.get("/getCustomer", user.getCustomer);
 
+// get user address
+route.get("/getCustomerAddress", user.getCustomerAddress);
+
 // update user
 route.patch("/updateCustomer", AuthJwt, upload, user.updateCustomer);
 

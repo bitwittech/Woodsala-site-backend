@@ -21,7 +21,7 @@ exports.home = (req, res) => {
 
 exports.register = async(req,res) => {   
     req.body.CID = `CID-${uuidv4()}`
-    //console.log(req.body);
+    ////console.log(req.body);
    const data = userDB(req.body);
     await data.save(req.body)
     .then((response)=>{
@@ -43,20 +43,20 @@ function generateJWT(data) {
 // login
 exports.login = async(req, res) => {
 
-    console.log(req.body)
+    //console.log(req.body)
     if (req.body.email === undefined || req.body.password === undefined) return res.status(203).send('Please provides the vaild data')
 
     userDB
         .findOne({ email: req.body.email })
         .then((data) => {
-            console.log(data)
+            //console.log(data)
             if (data != null) {
                 bcrypt.compare(req.body.password, data.password, function(err, result) {
-                    console.log(err,result)
+                    //console.log(err,result)
                     if (result === true) {
                         let token = generateJWT(req.body);
-                        console.log(data)
-                        console.log("User Found !!!", data);
+                        //console.log(data)
+                        //console.log("User Found !!!", data);
                         return res.send({ message: "Log In Successfully !!!", token, name: data.username, email: data.email, CID : data.CID })
 
                     } else
@@ -67,7 +67,7 @@ exports.login = async(req, res) => {
             }
         })
         .catch((err) => {
-            console.log({ message: "User Not Found !!!", err });
+            //console.log({ message: "User Not Found !!!", err });
             return res.status(203).send({ message: "User Not Found !!!", err })
         })
 
@@ -77,11 +77,34 @@ exports.login = async(req, res) => {
 exports.getCustomer = async(req,res) =>{
     userDB.findOne({CID : req.query.CID},{_id : 0,password : 0})
     .then((data)=>{
-        console.log(data)
+        //console.log(data)
         return res.status(200).send(data)
     })
     .catch((err)=>{
-        console.log(err)
+        //console.log(err)
+        return res.status(404).send(err)
+    })
+
+}
+
+// get customer's addresses 
+exports.getCustomerAddress = async(req,res) =>{
+    userDB.findOne({CID : req.query.CID},{
+        CID : 0,
+        register_time : 0,
+        profile_image : 0,
+        username : 0,
+        mobile : 0,
+        email : 0,
+        password : 0,
+        shipping : 0
+    })
+    .then((data)=>{
+        //console.log(data)
+        return res.status(200).send(data)
+    })
+    .catch((err)=>{
+        //console.log(err)
         return res.status(404).send(err)
     })
 
@@ -89,14 +112,14 @@ exports.getCustomer = async(req,res) =>{
 
 // update Customer
 exports.updateCustomer = async(req,res) =>{
-    console.log('FILES >>> ',req.files)
-    console.log('Body >>> ',req.body)
+    //console.log('FILES >>> ',req.files)
+    //console.log('Body >>> ',req.body)
     userDB.updateOne({CID : req.body.CID},req.body)
     .then((response)=>{
         res.send('Changes Saved !!!')
     })
     .catch((err)=>{
-        console.log(err)
+        //console.log(err)
         res.send(422).send({message : 'Something went wrong !!!'})
     })
 
