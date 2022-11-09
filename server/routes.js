@@ -1,3 +1,4 @@
+require('dotenv').config();
 const route = require("express").Router();
 const JWT = require("jsonwebtoken");
 const bcrypt = require("bcrypt");
@@ -80,7 +81,7 @@ function AuthJwt(req, res, next) {
 
     let token = req.headers.authorization.split("Bearer ")[1];
 
-    JWT.verify(token, "asdfijeh9oina3i432i4988*&*&(*&*()()ok5n3la^&*%*&T(bkjh9s8ew9(*H(OH**(H)OM)_(U)N)(Yn39873389(*u4054m5k4n5", (err, user) => {
+    JWT.verify(token, process.env.JWT_Secrete, (err, user) => {
         if (err) return res.sendStatus(403);
         req.user = user;
         next();
@@ -95,6 +96,12 @@ route.get("/", user.home);
 // registration route
 route.post("/register", encode, user.register);
 
+//  verification link route
+route.post("/sendVerificationLink",upload, user.sendVerificationLink);
+
+// verify token route
+route.get("/verify", user.verify);
+
 // login route
 route.post("/login", upload, user.login);
 
@@ -106,6 +113,9 @@ route.get("/getCustomerAddress", user.getCustomerAddress);
 
 // update user
 route.patch("/updateCustomer", AuthJwt, upload, user.updateCustomer);
+
+// update user
+route.get("/sendVerificationLink", user.sendVerificationLink);
 
 // =================== Product routes =======================
 

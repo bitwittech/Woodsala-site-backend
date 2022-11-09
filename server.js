@@ -43,6 +43,6 @@ app.use((req, res, next) => {
   });
 
 app.listen(port,()=>{
-        console.log('Server is running at port',port);
-        // console.log(app.address());
+        // console.log('Server is running at port',port);
+        // // console.log(app.address());
     })

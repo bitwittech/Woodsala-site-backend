@@ -23,10 +23,10 @@ const product = require('../../database/models/product');
 
 exports.addCartItem = async (req, res) => {
 
-    console.log(req.body)
+    // console.log(req.body)
         await cart.findOneAndUpdate({$and : [{CID : req.body.CID},{product_id : req.body.product_id}]},req.body,{upsert : true})
         .then((response) => {
-            console.log(response)
+            // console.log(response)
             return res.send({ message: 'Item added to the cart !!!' })
         })
         .catch((err) => {
@@ -37,11 +37,11 @@ exports.addCartItem = async (req, res) => {
 
 exports.removeCartItem = async (req, res) => {
 
-    console.log(req.query)
+    // console.log(req.query)
     // data
     cart.deleteMany({$and : [{CID : req.query.CID},{product_id : req.query.product_id}]})
         .then((response) => {
-            // console.log(response)
+            // // console.log(response)
             if (response.deletedCount > 0)
             return res.send({ message: 'Item removed from the cart !!!' })
             else
@@ -57,7 +57,7 @@ exports.removeCartItem = async (req, res) => {
 exports.getCartItem = async (req, res) => {
 
     cart.find(req.query,{_id : 0}).then((response) => {
-        console.log(response)
+        // console.log(response)
             return res.send(response)
         })
         .catch((err) => {
@@ -82,7 +82,7 @@ exports.getDetails = async (req, res) => {
 
 // update quantity
 exports.updateQuantity = async (req,res) => {
-    console.log(req.body)
+    // console.log(req.body)
     cart.findOneAndUpdate({$and : [{CID : req.body.CID, product_id : req.body.product_id }]},{quantity : req.body.quantity })
     .then((data)=>{
         return res.send('Updated Successfully !!!')
