@@ -138,8 +138,6 @@ exports.updateCustomer = async (req, res) => {
 
 }
 
-const localURL = 'http://localhost:3000/verify?token='
-const offical = 'http://134.209.150.190/verify?token='
 
 // route for send Verification Link
 exports.sendVerificationLink = async (req, res) => {
@@ -155,14 +153,14 @@ exports.sendVerificationLink = async (req, res) => {
         subject: "Verification Link from woodshala !!!", // Subject line
         text: "Hello world?", // plain text body
         html: `<h1>Thanks for chossing us !!!</h1>
-        <img alt = 'WoodshalaLogo' src = 'https://woodshala.in/static/media/logo.9d42e1087b29884ef99f.webp' width = '200px'/>
-               <p>Hello ${req.body.username}, please <a href = ${offical+token}>click here</a> to login Woodshala.</p>
-               <h5>Note :- This link is valid for one time use only.</h5>
-               `, // html body
+        // <img alt = 'WoodshalaLogo' src = 'https://woodshala.in/static/media/logo.9d42e1087b29884ef99f.webp' width = '200px'/>
+        <p>Hello ${req.body.username}, please <a href = ${process.env.OFFICIAL_URL+token}>click here</a> to login Woodshala.</p>
+        <h5>Note :- This link is valid for one time use only.</h5>
+        `, // html body
     })
-        .then((response) => {
-            // console.log(response)
-            res.status(200).send({ message: 'Verfication mail has been sent !!! ' })
+    .then((response) => {
+        // console.log(response)
+        res.status(200).send({ message: 'Verfication mail has been sent !!! ' })
         })
         .catch((err) => {
             console.log(err)
