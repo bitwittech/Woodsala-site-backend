@@ -8,6 +8,9 @@ exports.getProducts = async (req, res) => {
     //console.log(req.query)
     let filter = undefined;
 
+    filter = JSON.parse(req.query.filter)
+
+
     // for proceeding the filter if there is wrong json formate
     if(req.query.filter)
     {
@@ -17,9 +20,6 @@ exports.getProducts = async (req, res) => {
     }
 
     //console.log(filter)
-    // { pageNumber: '1', filter: '{"category_name": "/Table/i"  }' }
-    // { category_name: { '$regex': '/Table/i' } }
-
     // final aggregation computing
     product.aggregate([
     {'$match' : filter || {} }, 
@@ -45,26 +45,74 @@ exports.getProducts = async (req, res) => {
             //console.log(err)
             return res.status(500).send({ message: 'Something went wrong !!!' })
         })
-
-//         {'$project' : {'selling_price': { 
-//             'selling_price' :  
-//             {
-//                 '$multiply' :
-//                         [ 
-//                         {
-//                             '$divide' : '$selling_price' !== 0 && '$discount_limit' !== 0 ?   
-//                                 ['$selling_price' , '$discount_limit' ] : [0]
-//                         },100
-//                         ]
-//             }
-        
-//     }
-// }
-// },
-
-
 }
 
+// for getting related product
+exports.getRelatedProduct = async (req,res) => {
+       //console.log(req.query)
+       let filter = undefined;
+
+    //    console.log(filter)
+
+       // for proceeding the filter if there is wrong json formate
+       if(req.query.filter !== '{}' && req.query.filter )
+       {
+           try {
+            filter = JSON.parse(req.query.filter)
+           }
+           catch {filter = undefined}
+       }
+
+       //console.log(filter)
+
+    //    return res.send('all okay')
+   
+    product.aggregate(
+    [{'$match' : filter ?  {'$or': [{'category_name' : {'$regex' : filter.category_name }},{'product_title' : {'$regex' : filter.product_title}}]} : {}}, 
+    {'$group' : {'_id' : '$_id',
+                 'product_title': {'$first' : '$product_title'},
+                 'product_image': {'$first' : '$product_image'},
+                 'featured_image': {'$first' : '$featured_image'},
+                 'MRP': {'$first' : '$selling_price'},
+                 'selling_price': { '$first' :'$selling_price'},
+                 'discount_limit': {'$first' : '$discount_limit'},
+                 'SKU': {'$first' : '$SKU'},
+                 'category_name': {'$first' : '$category_name'},
+    }}, 
+    {'$limit' : 10}]
+    )
+    .then((response)=>{
+        // console.log(response)
+return res.send(response)
+    })
+    .catch((err)=>{
+        console.log(err)
+return res.status(500).send(err)
+    })
+}
+
+exports.getSearchList = async (req,res) => {
+
+    if(req.query.filter === undefined) return res.send({message : 'No params are there !!!'})
+
+    product.aggregate(
+        [{'$match' : {'$or': [{'category_name' : {'$regex' : req.query.filter, '$options' : 'i' }},
+        {'product_title' : {'$regex' : req.query.filter, '$options' : 'i'}}]}}, 
+        {'$group' : {'_id' : '$_id',
+                     'product_title': {'$first' : '$product_title'},
+        }}, 
+        {'$limit' : 10}]
+        )
+        .then((response)=>{
+            // console.log(response)
+            return res.send(response)
+        })
+        .catch((err)=>{
+            console.log(err)
+            return res.status(500).send({message : 'Something went wrong !!!'})
+        })
+    
+}
 
 // for product detail to show 
 exports.getProductDetails = async (req, res) => {

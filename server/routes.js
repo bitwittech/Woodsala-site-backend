@@ -125,6 +125,12 @@ route.get("/getProducts",product.getProducts)
 // get details product 
 route.get("/getProductDetails",product.getProductDetails)
 
+// get getRelatedProduct 
+route.get("/getRelatedProduct",product.getRelatedProduct)
+
+// get getSearchList 
+route.get("/getSearchList",product.getSearchList)
+
 // ==================== Cart routes ==========================
 
 // add item in cart 
