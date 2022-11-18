@@ -4,47 +4,33 @@ const product = require('../../database/models/product');
 // for getting the list of the product
 exports.getProducts = async (req, res) => {
 
-
-    //console.log(req.query)
-    let filter = undefined;
-
-    filter = JSON.parse(req.query.filter)
-
-
-    // for proceeding the filter if there is wrong json formate
-    if(req.query.filter)
-    {
-        try {filter = JSON.parse(req.query.filter)
-        }
-        catch {filter = undefined}
-    }
-
-    //console.log(filter)
-    // final aggregation computing
+            // final aggregation computing
     product.aggregate([
-    {'$match' : filter || {} }, 
-    {'$group' : {'_id' : '$_id',
-                 'product_title': {'$first' : '$product_title'},
-                 'product_image': {'$first' : '$product_image'},
-                 'featured_image': {'$first' : '$featured_image'},
-                 'MRP': {'$first' : '$selling_price'},
-                 'selling_price': { '$first' :'$selling_price'},
-                 'discount_limit': {'$first' : '$discount_limit'},
-                 'SKU': {'$first' : '$SKU'},
-                 'category_name': {'$first' : '$category_name'},
-    }}, 
-    {'$sort' : {'SKU' : 1}},
-    {'$skip' : req.query.pageNumber > 0 ? (req.query.pageNumber - 1) * 10 : 0},
-    {'$limit' : 10}
-]).then((data) => {
-            // data.map((row)=>console.log(row.SKU))
-            // console.log(data)
-            return res.status(200).send(data);
-        })
-        .catch((err) => {
-            //console.log(err)
-            return res.status(500).send({ message: 'Something went wrong !!!' })
-        })
+        {'$match' : {'$or': [{'category_name' : {'$regex' : req.query.category_name, '$options' : 'i' }},
+        {'product_title' : {'$regex' : req.query.product_title  , '$options' : 'i'}}]}}, 
+        {'$group' : {'_id' : '$_id',
+                     'product_title': {'$first' : '$product_title'},
+                     'product_image': {'$first' : '$product_image'},
+                     'featured_image': {'$first' : '$featured_image'},
+                     'MRP': {'$first' : '$selling_price'},
+                     'selling_price': { '$first' :'$selling_price'},
+                     'discount_limit': {'$first' : '$discount_limit'},
+                     'SKU': {'$first' : '$SKU'},
+                     'category_name': {'$first' : '$category_name'},
+        }}, 
+        {'$sort' : {'SKU' : 1}},
+        {'$skip' : req.query.pageNumber > 0 ? (req.query.pageNumber - 1) * 10 : 0},
+        {'$limit' : 10}
+    ]).then((data) => {
+                // data.map((row)=>console.log(row.SKU))
+                // console.log(data)
+                return res.status(200).send(data);
+            })
+            .catch((err) => {
+                console.log(err)
+                return res.status(500).send({ message: 'Something went wrong !!!' })
+            })  
+
 }
 
 // for getting related product
