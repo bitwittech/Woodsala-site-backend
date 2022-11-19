@@ -4,10 +4,18 @@ const product = require('../../database/models/product');
 // for getting the list of the product
 exports.getProducts = async (req, res) => {
 
+    console.log(req.query)
+    let query = {}
+    if(req.query.product_title === 'undefined' && req.query.category_name === 'undefined' ) {
+     query = {};
+    }
+    else {
+        query = {'$or': [{'category_name' : {'$regex' : req.query.category_name, '$options' : 'i' }},
+        {'product_title' : {'$regex' : req.query.product_title  , '$options' : 'i'}}]}
+    }
             // final aggregation computing
     product.aggregate([
-        {'$match' : {'$or': [{'category_name' : {'$regex' : req.query.category_name, '$options' : 'i' }},
-        {'product_title' : {'$regex' : req.query.product_title  , '$options' : 'i'}}]}}, 
+        {'$match' : query}, 
         {'$group' : {'_id' : '$_id',
                      'product_title': {'$first' : '$product_title'},
                      'product_image': {'$first' : '$product_image'},
