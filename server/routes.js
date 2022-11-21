@@ -134,7 +134,7 @@ route.get("/getSearchList",product.getSearchList)
 // ==================== Cart routes ==========================
 
 // add item in cart 
-route.post("/addCartItem",AuthJwt, cart.addCartItem)
+route.post("/addCartItem", cart.addCartItem)
 
 // remove item from cart 
 route.get("/removeCartItem", cart.removeCartItem)
@@ -146,6 +146,6 @@ route.get("/getCartItem", cart.getCartItem)
 route.get("/getDetails", cart.getDetails)
 
 // update item details in cart 
-route.patch("/updateQuantity",AuthJwt, cart.updateQuantity)
+route.patch("/updateQuantity", cart.updateQuantity)
 
 module.exports = route;
