@@ -70,7 +70,8 @@ exports.getCartItem = async (req, res) => {
 exports.getDetails = async (req, res) => {
 
 
-    product.find({SKU : JSON.parse(req.query.products)},{SKU : 1,product_title:1,featured_image:1,MRP:1,selling_price:1}).then((response) => {
+    product.find({SKU : JSON.parse(req.query.products)},
+    {SKU : 1,product_title:1,product_image : 1,featured_image:1,MRP:1,selling_price:1,discount_limit : 1}).then((response) => {
             return res.send(response)
         })
         .catch((err) => {
