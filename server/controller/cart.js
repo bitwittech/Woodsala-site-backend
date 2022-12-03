@@ -109,8 +109,9 @@ exports.placeOrder = async(req,res) => {
             key_secret: process.env.RAZORPAY_SECRET,
         });
 
+
         const options = {
-            amount: 50000, // amount in smallest currency unit
+            amount: req.body.total*100, // amount in smallest currency unit
             currency: "INR",
             receipt: "receipt_order_74394",
         };
