@@ -148,4 +148,10 @@ route.get("/getDetails", cart.getDetails)
 // update item details in cart 
 route.patch("/updateQuantity", cart.updateQuantity)
 
+// place order 
+route.post("/placeOrder",upload, cart.placeOrder)
+
+// verify payment 
+route.post("/verifyPayment",upload, cart.verifyPayment)
+
 module.exports = route;

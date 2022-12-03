@@ -1,6 +1,12 @@
 const cart = require('../../database/models/cart');
 const product = require('../../database/models/product');
+const order = require('../../database/models/order')
 
+// paymnt get way
+const Razorpay = require('razorpay');
+
+// crypto
+const crypto = require('crypto');
 
 // for getting the list of the product`
 // exports.getProducts = async (req,res)=>{
@@ -92,3 +98,73 @@ exports.updateQuantity = async (req,res) => {
          
     })
 }
+
+// place an order 
+
+exports.placeOrder = async(req,res) => {
+
+    try {
+        const instance = new Razorpay({
+            key_id: process.env.RAZORPAY_KEY_ID,
+            key_secret: process.env.RAZORPAY_SECRET,
+        });
+
+        const options = {
+            amount: 50000, // amount in smallest currency unit
+            currency: "INR",
+            receipt: "receipt_order_74394",
+        };
+
+        const order = await instance.orders.create(options);
+        if (!order) return res.status(500).send("Some error occured");
+
+        return res.json(order);
+
+
+    } catch (error) {
+        res.status(500).send(error);
+    }
+    
+ }
+
+ exports.verifyPayment = async (req, res) => {
+    try {
+        // getting the details back from our font-end
+        const {
+            orderCreationId,
+            razorpayPaymentId,
+            razorpayOrderId,
+            razorpaySignature,
+        } = req.body;
+
+        const shasum = crypto.createHmac("sha256", process.env.RAZORPAY_SECRET); // always put Secret Code as a code salt 
+
+        shasum.update(`${orderCreationId}|${razorpayPaymentId}`);
+
+        const digest = shasum.digest("hex");
+
+        console.log(digest,razorpaySignature)
+        // comaparing our digest with the actual signature
+        if (digest !== razorpaySignature)
+            return res.status(400).json({ msg: "Transaction not legit!" });
+
+        // THE PAYMENT IS LEGIT & VERIFIED
+          if(req.body.CID === null) req.body.CID = 'Not Registered';
+        
+            const data = order(req.body);
+        
+            data.save()
+            .then((response)=>{
+               console.log(response)
+               res.send({message : 'Order Added !!!',response})
+            })
+            .catch((err)=>{
+               console.log(err)
+               res.status(404).send({message : 'Something Went Wrong !!!'})
+            })
+    } catch (error) {
+        console.log(error)
+        res.status(500).send(error);
+    }
+};
+ 
