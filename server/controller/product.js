@@ -1,4 +1,5 @@
 const product = require('../../database/models/product');
+const review  = require('../../database/models/review')
 
 
 // for getting the list of the product
@@ -121,4 +122,44 @@ exports.getProductDetails = async (req, res) => {
         })
         .catch((err) => { return res.send({ message: 'Somthing went wrang !!!' }) })
 
+}
+
+
+// for adding a review
+exports.addReview = async (req,res) => {
+    try {
+        const data = review(req.body);
+        if(req.body.review === undefined) return res.sendStatus(203).send("Review Box doesn't be empty.")
+        const response = await data.save()
+        if(response) return res.send({message : 'Review Added Successfully !!!'});
+    } catch (error) {
+        console.log(error)
+        res.sendStatus(500);
+    } 
+}
+
+
+// for listing  reviews
+exports.listReview = async (req,res) => {
+    try {
+        if(!req.query.product_id) return res.sendStatus(404).send({message : 'Please provide a valid Product ID.'})
+        review.aggregate([
+            {$match : {product_id : req.query.product_id}},
+            { $lookup:
+                {
+                   from: "customers",
+                   localField: "CID",
+                   foreignField: "CID",
+                   as: "customer"
+                }
+            }
+        ])
+        .then((data)=>{
+                console.log(data)
+                res.send(data);
+            })
+    } catch (error) {
+        console.log(error)
+        res.sendStatus(500);
+    } 
 }

@@ -131,6 +131,12 @@ route.get("/getRelatedProduct",product.getRelatedProduct)
 // get getSearchList 
 route.get("/getSearchList",product.getSearchList)
 
+// add review 
+route.post("/addReview",upload,product.addReview)
+
+// list Review 
+route.get("/listReview",product.listReview)
+
 // ==================== Cart routes ==========================
 
 // add item in cart 
