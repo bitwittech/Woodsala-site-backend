@@ -6,48 +6,48 @@ const review = require('../../database/models/review')
 // for getting the list of the product
 exports.getProducts = async (req, res) => {
 
-    console.log(req.query)
+    //console.log(req.query)
     let filter = {};
     
     if (req.query.filter !== 'undefined') {
         filter = JSON.parse(req.query.filter)
     }
-    console.log(filter)
+    // //console.log(filter)
  
     let query = {}
-    if (req.query.product_title === 'undefined' && req.query.category_name === 'undefined' && req.query.filter === 'undefined') {
-        query = {};
-    }
-    else if (req.query.filter !== 'undefined') {
-        let filterArray = [{ 'category_name': { '$regex': req.query.category_name, '$options': 'i' } }]
-        
-        if(filter.price)
-            filterArray.push({ '$and': [{ 'selling_price' : {'$gt': filter.price[0]}}, {'selling_price' :{'$lt': filter.price[1]}}]})
-        
-        if(filter.length)
-            filterArray.push({ '$and': [{ 'length_main' : {'$gt': filter.length[0]}}, {'length_main' :{'$lt': filter.length[1]}}]})
-        
-        if(filter.breadth)
-            filterArray.push({ '$and': [{ 'breadth' : {'$gt': filter.breadth[0]}}, {'breadth' :{'$lt': filter.breadth[1]}}]})
-        
-        if(filter.height)
-            filterArray.push({ '$and': [{ 'height' : {'$gt': filter.height[0]}}, {'height' :{'$lt': filter.height[1]}}]})
-            
-        if(filter.material.length > 0)
-            {
-                filterArray.push({ '$or': filter.material.map((val)=>{return { 'primary_material' : { '$regex': val, '$options' : 'i' }}})})
-            }
-        
-        query = {'$and': filterArray}
-    console.log(JSON.stringify(query))
+    let filterArray = [];
+    
 
+    if(req.query.category_name !== 'undefined')
+    filterArray.push({ 'category_name': { '$regex': req.query.category_name, '$options': 'i' } })
+    
+    if(req.query.product_title !== 'undefined')
+    filterArray.push({ 'product_title': { '$regex': req.query.product_title, '$options': 'i' } })
+    
+    if(filter.price)
+    filterArray.push({ '$and': [{ 'selling_price' : {'$gt': filter.price[0]}}, {'selling_price' :{'$lt': filter.price[1]}}]})
+    
+    if(filter.price)
+    filterArray.push({ '$and': [{ 'selling_price' : {'$gt': filter.price[0]}}, {'selling_price' :{'$lt': filter.price[1]}}]})
+
+    if(filter.length)
+        filterArray.push({ '$and': [{ 'length_main' : {'$gt': filter.length[0]}}, {'length_main' :{'$lt': filter.length[1]}}]})
+
+    if(filter.breadth)
+        filterArray.push({ '$and': [{ 'breadth' : {'$gt': filter.breadth[0]}}, {'breadth' :{'$lt': filter.breadth[1]}}]})
+
+    if(filter.height)
+        filterArray.push({ '$and': [{ 'height' : {'$gt': filter.height[0]}}, {'height' :{'$lt': filter.height[1]}}]})
+
+    if(filter.material.length > 0)
+    {
+        filterArray.push({ '$or': filter.material.map((val)=>{return { 'primary_material' : { '$regex': val, '$options' : 'i' }}})})
     }
-    else {
-        query = {
-            '$or': [{ 'category_name': { '$regex': req.query.category_name, '$options': 'i' } },
-            { 'product_title': { '$regex': req.query.product_title, '$options': 'i' } }]
-        }
-    }
+
+    if(filterArray.length > 0)
+        query = {'$and': filterArray}
+    
+    //console.log(JSON.stringify(query))
 
 
     // final aggregation computing
@@ -71,12 +71,12 @@ exports.getProducts = async (req, res) => {
         { '$skip': req.query.pageNumber > 0 ? (req.query.pageNumber - 1) * 10 : 0 },
         { '$limit': 10 }
     ]).then((data) => {
-        // data.map((row)=>console.log(row.SKU))
-        console.log(data.length)
+        // data.map((row)=>//console.log(row.SKU))
+        //console.log(data.length)
         return res.status(200).send(data);
     })
         .catch((err) => {
-            console.log(err)
+            //console.log(err)
             return res.status(500).send({ message: 'Something went wrong !!!' })
         })
 
@@ -84,10 +84,10 @@ exports.getProducts = async (req, res) => {
 
 // for getting related product
 exports.getRelatedProduct = async (req, res) => {
-    //console.log(req.query)
+    ////console.log(req.query)
     let filter = undefined;
 
-    //    console.log(filter)
+    //    //console.log(filter)
 
     // for proceeding the filter if there is wrong json formate
     if (req.query.filter !== '{}' && req.query.filter) {
@@ -97,7 +97,7 @@ exports.getRelatedProduct = async (req, res) => {
         catch { filter = undefined }
     }
 
-    //console.log(filter)
+    ////console.log(filter)
 
     //    return res.send('all okay')
 
@@ -120,11 +120,11 @@ exports.getRelatedProduct = async (req, res) => {
         { '$limit': 10 }]
     )
         .then((response) => {
-            // console.log(response)
+            // //console.log(response)
             return res.send(response)
         })
         .catch((err) => {
-            console.log(err)
+            //console.log(err)
             return res.status(500).send(err)
         })
 }
@@ -149,11 +149,11 @@ exports.getSearchList = async (req, res) => {
         { '$limit': 10 }]
     )
         .then((response) => {
-            // console.log(response)
+            // //console.log(response)
             return res.send(response)
         })
         .catch((err) => {
-            console.log(err)
+            //console.log(err)
             return res.status(500).send({ message: 'Something went wrong !!!' })
         })
 
@@ -181,7 +181,7 @@ exports.addReview = async (req, res) => {
         const response = await data.save()
         if (response) return res.send({ message: 'Review Added Successfully !!!' });
     } catch (error) {
-        console.log(error)
+        //console.log(error)
         res.sendStatus(500);
     }
 }
@@ -204,11 +204,11 @@ exports.listReview = async (req, res) => {
             }
         ])
             .then((data) => {
-                console.log(data)
+                //console.log(data)
                 res.send(data);
             })
     } catch (error) {
-        console.log(error)
+        //console.log(error)
         res.sendStatus(500);
     }
 }
