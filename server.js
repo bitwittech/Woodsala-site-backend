@@ -27,7 +27,7 @@ app.set('views', 'views')
 app.use('/upload', express.static(path.join(__dirname, 'upload')));
 
 // put the site on maintenance 
-app.use((req, res, next) => res.render('maintenance'));
+// app.use((req, res, next) => res.render('maintenance'));
 
 // requiring the routes
 app.use('/api/', require('./server/routes'))
