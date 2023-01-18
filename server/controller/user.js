@@ -34,11 +34,11 @@ exports.home = (req, res) => {
 
 exports.register = async (req, res) => {
     req.body.CID = `CID-${uuidv4()}`
-    console.log(req.body);
+    // console.log(req.body);
     const data = userDB(req.body);
     await data.save(req.body)
         .then((response) => {
-            return res.status(200).send({ message: 'Customer added successfully !!!',data : {email  : response.email, password : req.body.repassword} });
+            return res.status(200).send({ message: 'Customer added successfully !!!', data: { email: response.email, password: req.body.repassword } });
         })
         .catch((err) => {
             return res.status(406).send({ message: 'Duplicate entries are not allowed !!!' })
@@ -56,7 +56,7 @@ function generateJWT(data) {
 // login
 exports.login = async (req, res) => {
 
-    console.log(req.body)
+    // console.log(req.body)
     if (req.body.email === undefined || req.body.password === undefined) return res.status(203).send('Please provides the valid data')
 
     userDB
@@ -80,7 +80,7 @@ exports.login = async (req, res) => {
             }
         })
         .catch((err) => {
-            //// console.log({ message: "User Not Found !!!", err });
+            console.log({ message: "User Not Found !!!", err });
             return res.status(203).send({ message: "User Not Found !!!", err })
         })
 
@@ -94,7 +94,7 @@ exports.getCustomer = async (req, res) => {
             return res.status(200).send(data)
         })
         .catch((err) => {
-            //// console.log(err)
+            console.log(err)
             return res.status(404).send(err)
         })
 
@@ -117,7 +117,7 @@ exports.getCustomerAddress = async (req, res) => {
             return res.status(200).send(data)
         })
         .catch((err) => {
-            //// console.log(err)
+            console.log(err)
             return res.status(404).send(err)
         })
 
@@ -154,13 +154,13 @@ exports.sendVerificationLink = async (req, res) => {
         text: "Hello world?", // plain text body
         html: `<h1>Thanks for chossing us !!!</h1>
         // <img alt = 'WoodshalaLogo' src = 'https://woodshala.in/static/media/logo.9d42e1087b29884ef99f.webp' width = '200px'/>
-        <p>Hello ${req.body.username}, please <a href = ${process.env.OFFICIAL_URL+token}>click here</a> to login Woodshala.</p>
+        <p>Hello ${req.body.username}, please <a href = ${process.env.OFFICIAL_URL + token}>click here</a> to login Woodshala.</p>
         <h5>Note :- This link is valid for one time use only.</h5>
         `, // html body
     })
-    .then((response) => {
-        // console.log(response)
-        res.status(200).send({ message: 'Verfication mail has been sent !!! ' })
+        .then((response) => {
+            // console.log(response)
+            res.status(200).send({ message: 'Verfication mail has been sent !!! ' })
         })
         .catch((err) => {
             console.log(err)
@@ -169,10 +169,10 @@ exports.sendVerificationLink = async (req, res) => {
 
 }
 
-exports.verify = async(req,res) =>{
+exports.verify = async (req, res) => {
     JWT.verify(req.query.token, process.env.JWT_Secrete, (err, user) => {
         // console.log(user)
-        if (err) return res.status(403).send({message: 'False Token'});
+        if (err) return res.status(403).send({ message: 'False Token' });
         return res.status(200).send(user)
     });
 }

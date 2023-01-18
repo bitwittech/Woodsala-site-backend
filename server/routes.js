@@ -9,15 +9,16 @@ const multer = require('multer')
 const user = require("./controller/user");
 const product = require("./controller/product");
 const cart = require("./controller/cart");
+const wishlist = require('./controller/wishlist');
 
 
 // middleware for the multer setup
 
 const storage = multer.diskStorage({
-    destination: function(req, file, cb) {
+    destination: function (req, file, cb) {
         cb(null, './upload/');
     },
-    filename: function(req, file, cb) {
+    filename: function (req, file, cb) {
         cb(null, new Date().toISOString() + "_" + file.originalname);
     }
 });
@@ -37,7 +38,7 @@ const upload = multer({
         fileSize: 1024 * 1024 * 5
     },
     fileFilter: fileFilter
-}).fields([{ name: 'profile_image' } ]);
+}).fields([{ name: 'profile_image' }]);
 
 
 // middleware for encryption
@@ -57,7 +58,7 @@ function encode(req, res, next) {
     // code to hash the password
 
     bcrypt.genSalt(saltRounds, (err, salt) => {
-        bcrypt.hash(req.body.password, salt, function(err, hash) {
+        bcrypt.hash(req.body.password, salt, function (err, hash) {
             // async (req,res)(">>>>>", hash);
             if (hash !== null) {
                 req.body.password = hash;
@@ -97,7 +98,7 @@ route.get("/", user.home);
 route.post("/register", encode, user.register);
 
 //  verification link route
-route.post("/sendVerificationLink",upload, user.sendVerificationLink);
+route.post("/sendVerificationLink", upload, user.sendVerificationLink);
 
 // verify token route
 route.get("/verify", user.verify);
@@ -120,22 +121,22 @@ route.get("/sendVerificationLink", user.sendVerificationLink);
 // =================== Product routes =======================
 
 // listing product 
-route.get("/getProducts",product.getProducts)
+route.get("/getProducts", product.getProducts)
 
 // get details product 
-route.get("/getProductDetails",product.getProductDetails)
+route.get("/getProductDetails", product.getProductDetails)
 
 // get getRelatedProduct 
-route.get("/getRelatedProduct",product.getRelatedProduct)
+route.get("/getRelatedProduct", product.getRelatedProduct)
 
 // get getSearchList 
-route.get("/getSearchList",product.getSearchList)
+route.get("/getSearchList", product.getSearchList)
 
 // add review 
-route.post("/addReview",upload,product.addReview)
+route.post("/addReview", upload, product.addReview)
 
 // list Review 
-route.get("/listReview",product.listReview)
+route.get("/listReview", product.listReview)
 
 // ==================== Cart routes ==========================
 
@@ -155,9 +156,19 @@ route.get("/getDetails", cart.getDetails)
 route.patch("/updateQuantity", cart.updateQuantity)
 
 // place order 
-route.post("/placeOrder",upload, cart.placeOrder)
+route.post("/placeOrder", upload, cart.placeOrder)
 
 // verify payment 
-route.post("/verifyPayment",upload, cart.verifyPayment)
+route.post("/verifyPayment", upload, cart.verifyPayment)
+
+// ============== Wishlist ==========
+
+route.post('/addWshList', upload, wishlist.addWshList)
+
+route.delete('/removeWshList', wishlist.removeWshList)
+
+route.get('/getWishedProduct', wishlist.getWishedProduct)
+
+route.get('/getWishList', wishlist.getWishList)
 
 module.exports = route;
