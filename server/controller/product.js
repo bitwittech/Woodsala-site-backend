@@ -8,45 +8,44 @@ exports.getProducts = async (req, res) => {
 
     //console.log(req.query)
     let filter = {};
-    
+
     if (req.query.filter !== 'undefined') {
         filter = JSON.parse(req.query.filter)
     }
     // //console.log(filter)
- 
+
     let query = {}
     let filterArray = [];
-    
 
-    if(req.query.category_name !== 'undefined')
-    filterArray.push({ 'category_name': { '$regex': req.query.category_name, '$options': 'i' } })
-    
-    if(req.query.product_title !== 'undefined')
-    filterArray.push({ 'product_title': { '$regex': req.query.product_title, '$options': 'i' } })
-    
-    if(filter.price)
-    filterArray.push({ '$and': [{ 'selling_price' : {'$gt': filter.price[0]}}, {'selling_price' :{'$lt': filter.price[1]}}]})
-    
-    if(filter.price)
-    filterArray.push({ '$and': [{ 'selling_price' : {'$gt': filter.price[0]}}, {'selling_price' :{'$lt': filter.price[1]}}]})
 
-    if(filter.length)
-        filterArray.push({ '$and': [{ 'length_main' : {'$gt': filter.length[0]}}, {'length_main' :{'$lt': filter.length[1]}}]})
+    if (req.query.category_name !== 'undefined')
+        filterArray.push({ 'category_name': { '$regex': req.query.category_name, '$options': 'i' } })
 
-    if(filter.breadth)
-        filterArray.push({ '$and': [{ 'breadth' : {'$gt': filter.breadth[0]}}, {'breadth' :{'$lt': filter.breadth[1]}}]})
+    if (req.query.product_title !== 'undefined')
+        filterArray.push({ 'product_title': { '$regex': req.query.product_title, '$options': 'i' } })
 
-    if(filter.height)
-        filterArray.push({ '$and': [{ 'height' : {'$gt': filter.height[0]}}, {'height' :{'$lt': filter.height[1]}}]})
+    if (filter.price)
+        filterArray.push({ '$and': [{ 'selling_price': { '$gt': filter.price[0] } }, { 'selling_price': { '$lt': filter.price[1] } }] })
 
-    if(filter.material.length > 0)
-    {
-        filterArray.push({ '$or': filter.material.map((val)=>{return { 'primary_material' : { '$regex': val, '$options' : 'i' }}})})
+    if (filter.price)
+        filterArray.push({ '$and': [{ 'selling_price': { '$gt': filter.price[0] } }, { 'selling_price': { '$lt': filter.price[1] } }] })
+
+    if (filter.length)
+        filterArray.push({ '$and': [{ 'length_main': { '$gt': filter.length[0] } }, { 'length_main': { '$lt': filter.length[1] } }] })
+
+    if (filter.breadth)
+        filterArray.push({ '$and': [{ 'breadth': { '$gt': filter.breadth[0] } }, { 'breadth': { '$lt': filter.breadth[1] } }] })
+
+    if (filter.height)
+        filterArray.push({ '$and': [{ 'height': { '$gt': filter.height[0] } }, { 'height': { '$lt': filter.height[1] } }] })
+
+    if (filter.material.length > 0) {
+        filterArray.push({ '$or': filter.material.map((val) => { return { 'primary_material': { '$regex': val, '$options': 'i' } } }) })
     }
 
-    if(filterArray.length > 0)
-        query = {'$and': filterArray}
-    
+    if (filterArray.length > 0)
+        query = { '$and': filterArray }
+
     //console.log(JSON.stringify(query))
 
 
@@ -172,17 +171,34 @@ exports.getProductDetails = async (req, res) => {
 
 }
 
+let officialURL = 'https://woodshala.in';
+let localURL = 'http://localhost:8000';
 
 // for adding a review
 exports.addReview = async (req, res) => {
     try {
-        const data = review(req.body);
+        // console.log('Files >>>', req.files)
+
+        let imageURLs = []
+        if (req.files.review_images.length > 0) {
+            req.files.review_images.map((file) => {
+                imageURLs.push(`${officialURL}/${file.path}`)
+            })
+        }
+        req.body.review_images = imageURLs;
+
         if (req.body.review === undefined) return res.sendStatus(203).send("Review Box doesn't be empty.")
+        console.log('Final Body >>>', req.body)
+
+        const data = review(req.body);
         const response = await data.save()
+
         if (response) return res.send({ message: 'Review Added Successfully !!!' });
+
+        return res.status(203).send({ message: 'Something went wrong.' })
     } catch (error) {
-        //console.log(error)
-        res.sendStatus(500);
+        console.log(error)
+        return res.sendStatus(500);
     }
 }
 
