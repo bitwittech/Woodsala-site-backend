@@ -177,13 +177,15 @@ let localURL = 'http://localhost:8000';
 // for adding a review
 exports.addReview = async (req, res) => {
     try {
-        // console.log('Files >>>', req.files)
+        console.log('Files >>>', req.files)
 
         let imageURLs = []
-        if (req.files.review_images.length > 0) {
-            req.files.review_images.map((file) => {
-                imageURLs.push(`${officialURL}/${file.path}`)
-            })
+        if (req.files['review_images']) {
+            if (req.files['review_images'].length > 0) {
+                req.files['review_images'].map((file) => {
+                    imageURLs.push(`${officialURL}/${file.path}`)
+                })
+            }
         }
         req.body.review_images = imageURLs;
 
