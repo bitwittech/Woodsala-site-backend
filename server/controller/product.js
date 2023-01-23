@@ -3,6 +3,9 @@ const product = require('../../database/models/product');
 const review = require('../../database/models/review')
 
 
+let officialURL = 'https://woodshala.in';
+let localURL = 'http://localhost:8000';
+
 // for getting the list of the product
 exports.getProducts = async (req, res) => {
 
@@ -203,6 +206,12 @@ exports.getProductDetails = async (req, res) => {
                         variant_params.range.push({ SKU: [row.SKU], category: row.category_name, title: row.product_title, range: row.range });
                 })
 
+                // adding the present one 
+                variant_params.size.push({ SKU: [productDetail.SKU], category: productDetail.category_name, title: productDetail.product_title, size: `${productDetail.length_main + 'L' + ' x ' + productDetail.breadth + 'B' + ' x ' + productDetail.height + ' H '}` });
+                variant_params.material.push({ SKU: [productDetail.SKU], category: productDetail.category_name, title: productDetail.product_title, material: productDetail.primary_material.join() });
+                variant_params.range.push({ SKU: [productDetail.SKU], category: productDetail.category_name, title: productDetail.product_title, range: productDetail.range });
+
+
                 // console.log(variant_params)
                 return res.send({ data: productDetail, variant: { ...variant_params, show: true } });
             }
@@ -216,9 +225,6 @@ exports.getProductDetails = async (req, res) => {
         return res.send({ message: 'Something went wrang !!!' })
     }
 }
-
-let officialURL = 'https://woodshala.in';
-let localURL = 'http://localhost:8000';
 
 // for adding a review
 exports.addReview = async (req, res) => {
