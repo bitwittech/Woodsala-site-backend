@@ -159,16 +159,62 @@ exports.getSearchList = async (req, res) => {
 }
 
 // for product detail to show 
+
 exports.getProductDetails = async (req, res) => {
 
-    if (req.query === {}) return res.status(404).send({ message: 'Please Provide the product id.' })
-    await product.findOne(req.query)
-        .then((data) => {
+    if (req.query === {}) return res.status(406).send({ message: 'Please Provide the product id.' });
 
-            return res.send(data)
-        })
-        .catch((err) => { return res.send({ message: 'Somthing went wrang !!!' }) })
+    try {
 
+        // Consider size, material, range, 
+
+        let productDetail = await product.findOne({ SKU: req.query.SKU });
+
+        if (productDetail) {
+            let variants = await product.find({ '$and': [{ ACIN: productDetail.ACIN }, { '$nor': [{ SKU: productDetail.SKU }] }] },
+                {
+                    _id: 1,
+                    SKU: 1,
+                    length_main: 1,
+                    breadth: 1,
+                    height: 1,
+                    range: 1,
+                    primary_material: 1,
+                    product_title: 1,
+                    category_name: 1
+                });
+
+            let variant_params = {
+                size: [],
+                range: [],
+                material: []
+            }
+
+            if (variants.length > 0) {
+                // console.log('Variants >>> ', variants);
+                await variants.map((row) => {
+                    // for size
+                    variant_params.size.push({ SKU: [row.SKU], category: row.category_name, title: row.product_title, size: `${row.length_main + 'L' + ' x ' + row.breadth + 'B' + ' x ' + row.height + ' H '}` });
+                    // for material
+                    if (row.primary_material.length > 0)
+                        variant_params.material.push({ SKU: [row.SKU], category: row.category_name, title: row.product_title, material: row.primary_material.join() });
+                    // range 
+                    if (row.range !== 'None')
+                        variant_params.range.push({ SKU: [row.SKU], category: row.category_name, title: row.product_title, range: row.range });
+                })
+
+                // console.log(variant_params)
+                return res.send({ data: productDetail, variant: { ...variant_params, show: true } });
+            }
+            else
+                return res.send({ data: productDetail, variant: { ...variant_params, show: false } });
+        }
+        return res.status(203).send({ message: 'Product not found !!!' });
+
+    } catch (err) {
+        console.log('ERROR>>> ', err)
+        return res.send({ message: 'Something went wrang !!!' })
+    }
 }
 
 let officialURL = 'https://woodshala.in';
