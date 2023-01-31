@@ -323,14 +323,19 @@ exports.addReview = async (req, res) => {
     console.log("Files >>>", req.files);
 
     let imageURLs = [];
+    let videoURLs = [];
+
     if (req.files["review_images"]) {
       if (req.files["review_images"].length > 0) {
         req.files["review_images"].map((file) => {
-          imageURLs.push(`${officialURL}/${file.path}`);
+          if (file.mimetype === "video/mp4")
+            return videoURLs.push(`${officialURL}/${file.path}`);
+          return imageURLs.push(`${officialURL}/${file.path}`);
         });
       }
     }
     req.body.review_images = imageURLs;
+    req.body.review_videos = videoURLs;
 
     if (req.body.review === undefined)
       return res.sendStatus(203).send("Review Box doesn't be empty.");
@@ -343,7 +348,7 @@ exports.addReview = async (req, res) => {
 
     return res.status(203).send({ message: "Something went wrong." });
   } catch (error) {
-    console.log(error);
+    console.log("ERROR>>>", error);
     return res.sendStatus(500);
   }
 };

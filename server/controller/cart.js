@@ -144,7 +144,7 @@ exports.placeOrder = async(req,res) => {
 
         const digest = shasum.digest("hex");
 
-        console.log(digest,razorpaySignature)
+        // console.log(digest,razorpaySignature)
         // comaparing our digest with the actual signature
         if (digest !== razorpaySignature)
             return res.status(400).json({ msg: "Transaction not legit!" });
@@ -156,7 +156,7 @@ exports.placeOrder = async(req,res) => {
         
             data.save()
             .then((response)=>{
-               console.log(response)
+            //    console.log(response)
                res.send({message : 'Order Added !!!',response})
             })
             .catch((err)=>{
