@@ -8,6 +8,8 @@ const blog = mongoose.Schema({
   card_image: String,
   card_description: String,
   description: String,
+},{
+  timestamps: true
 });
 
 module.exports = mongoose.model("blogData", blog);

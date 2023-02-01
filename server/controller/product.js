@@ -90,6 +90,14 @@ exports.getProducts = async (req, res) => {
           category_name: { $first: "$category_name" },
         },
       },
+      {
+        $lookup: {
+          from: "categories",
+          localField: "category_name",
+          foreignField: "category_name",
+          as: "categories",
+        },
+      },
       { $sort: { selling_price: 1 } },
       { $skip: req.query.pageNumber > 0 ? (req.query.pageNumber - 1) * 10 : 0 },
       { $limit: 10 },
@@ -204,7 +212,38 @@ exports.getProductDetails = async (req, res) => {
   try {
     // Consider size, material, range,
 
-    let productDetail = await product.findOne({ SKU: req.query.SKU });
+    let productDetail = await product.aggregate([
+      {$match : { SKU: req.query.SKU }},
+      {
+        $group: {
+          _id: "$_id",
+          product_title: { $first: "$product_title" },
+          product_image: { $first: "$product_image" },
+          featured_image: { $first: "$featured_image" },
+          MRP: { $first: "$selling_price" },
+          selling_price: { $first: "$selling_price" },
+          showroom_price: { $first: "$showroom_price" },
+          discount_limit: { $first: "$discount_limit" },
+          SKU: { $first: "$SKU" },
+          category_name: { $first: "$category_name" },
+          sub_category_name: { $first: "$category_name" },
+          length_main: { $first: "$length_main" },
+          height: { $first: "$height" },
+          breadth: { $first: "$breadth" },
+          primary_material: { $first: "$primary_material" },
+          polish: { $first: "$polish" },
+        },
+      },
+      {
+        $lookup: {
+          from: "categories",
+          localField: "category_name",
+          foreignField: "category_name",
+          as: "categories",
+        },
+      }  
+    ])
+    ;
 
     if (productDetail) {
       let variants = await product.find(
