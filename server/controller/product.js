@@ -212,6 +212,7 @@ exports.getProductDetails = async (req, res) => {
   try {
     // Consider size, material, range,
 
+    // fetching the product 
     let productDetail = await product.aggregate([
       {$match : { SKU: req.query.SKU }},
       {
@@ -245,7 +246,11 @@ exports.getProductDetails = async (req, res) => {
     ])
     ;
 
-    if (productDetail) {
+
+    if (productDetail.length > 0) {
+
+      // for getting under the array 
+      productDetail = productDetail[0];
       let variants = await product.find(
         {
           $and: [
