@@ -7,7 +7,7 @@ let localURL = "http://localhost:8000";
 
 // for getting the list of the product
 exports.getProducts = async (req, res) => {
-  console.log(req.query);
+  // console.log(req.query);
   let filter = {};
 
   if (req.query.filter !== "undefined") {
