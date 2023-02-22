@@ -183,6 +183,9 @@ route.get("/getBlogHome", upload, blog.getBlogHome);
 // getBlog description
 route.get("/getBlog", upload, blog.getBlog);
 
+// verify review
+route.post("/verifyReview", upload, product.verifyReview);
+
 // ====================== For like Blog =========================
 
 module.exports = route;

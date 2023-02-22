@@ -1,9 +1,22 @@
 const { raw } = require("body-parser");
 const product = require("../../database/models/product");
 const review = require("../../database/models/review");
+const nodemailer = require("nodemailer");
 
 let officialURL = "https://woodshala.in";
 let localURL = "http://localhost:8000";
+
+// transporter for sending mail
+
+let transporter = nodemailer.createTransport({
+  host: "smtp.gmail.com",
+  port: 465,
+  secure: true, // true for 465, false for other ports
+  auth: {
+    user: process.env.MAIL,
+    pass: process.env.PASS,
+  },
+});
 
 // for getting the list of the product
 exports.getProducts = async (req, res) => {
@@ -212,9 +225,9 @@ exports.getProductDetails = async (req, res) => {
   try {
     // Consider size, material, range,
 
-    // fetching the product 
+    // fetching the product
     let productDetail = await product.aggregate([
-      {$match : { SKU: req.query.SKU }},
+      { $match: { SKU: req.query.SKU } },
       {
         $group: {
           _id: "$_id",
@@ -242,14 +255,10 @@ exports.getProductDetails = async (req, res) => {
           foreignField: "category_name",
           as: "categories",
         },
-      }  
-    ])
-    ;
-
-
+      },
+    ]);
     if (productDetail.length > 0) {
-
-      // for getting under the array 
+      // for getting under the array
       productDetail = productDetail[0];
       let variants = await product.find(
         {
@@ -423,5 +432,32 @@ exports.listReview = async (req, res) => {
   } catch (error) {
     //console.log(error)
     res.sendStatus(500);
+  }
+};
+
+exports.verifyReview = async (req, res) => {
+  try {
+    console.log(req.body);
+    const otp = Math.floor(100000 + Math.random() * 900000);
+
+    // send mail with defined transport object
+    let response = await transporter.sendMail({
+      from: "woodshala@gmail.com", // sender address
+      to: `${req.body.reviewer_email}`, // list of receivers
+      subject: "Email Verification from Woodsala !!!", // Subject line
+      html: `<h1>Thanks for your valuable review us !!!</h1>
+        <p>Hello ${req.body.reviewer_name}, your verification OTP down below.</p>
+        <h1 style = {backgroundColor = 'red'}>${otp}</h1>
+        `, // html body
+    });
+
+    if (response)
+      res.status(200).send({
+        otp: otp,
+        message: "Verification mail has been sent !!! ",
+      });
+  } catch (err) {
+    console.log("Error >> ", err);
+    res.status(500).send("Something went Wrong !!!");
   }
 };
