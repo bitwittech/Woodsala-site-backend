@@ -374,6 +374,7 @@ exports.getProductDetails = async (req, res) => {
 exports.addReview = async (req, res) => {
   try {
     console.log("Files >>>", req.files);
+    console.log("Files >>>", req.body);
 
     let imageURLs = [];
     let videoURLs = [];
@@ -387,6 +388,9 @@ exports.addReview = async (req, res) => {
         });
       }
     }
+
+    req.body.review = JSON.parse(req.body.review);
+
     req.body.review_images = imageURLs;
     req.body.review_videos = videoURLs;
 
@@ -459,5 +463,31 @@ exports.verifyReview = async (req, res) => {
   } catch (err) {
     console.log("Error >> ", err);
     res.status(500).send("Something went Wrong !!!");
+  }
+};
+
+// adding reply
+exports.addReply = async (req, res) => {
+  try {
+    console.log("body>>>", req.body);
+    let reply = JSON.parse(req.body.reply);
+
+    let old = await review.findOne({ _id: req.body._id }, { review: 1 });
+
+    console.log(old);
+
+    reply = [...old.review, ...reply];
+
+    let response = await review.findOneAndUpdate(
+      { _id: req.body._id },
+      { review: reply }
+    );
+
+    if (response) {
+      return res.send("All okay");
+    }
+  } catch (error) {
+    console.log("Error >>>", error);
+    res.status(500).send({ message: "Something Went Wrong !!!" });
   }
 };
