@@ -11,6 +11,7 @@ const product = require("./controller/product");
 const cart = require("./controller/cart");
 const wishlist = require("./controller/wishlist");
 const blog = require("./controller/blog");
+const contact = require("./controller/contact");
 
 // middleware for the multer setup
 
@@ -44,7 +45,7 @@ const upload = multer({
     fileSize: 50 * 1024 * 1024,
   },
   fileFilter: fileFilter,
-}).fields([{ name: "profile_image", name: "review_images" }]);
+}).fields([{ name: "profile_image", name: "review_images", name: "images" }]);
 
 // middleware for encryption
 function encode(req, res, next) {
@@ -190,5 +191,9 @@ route.post("/verifyReview", upload, product.verifyReview);
 
 // add reply
 route.post("/addReply", upload, product.addReply);
+
+// ============== Contact Us page
+
+route.post("/addContact", upload, contact.addContact);
 
 module.exports = route;
