@@ -45,7 +45,11 @@ const upload = multer({
     fileSize: 50 * 1024 * 1024,
   },
   fileFilter: fileFilter,
-}).fields([{ name: "profile_image", name: "review_images", name: "images" }]);
+}).fields([
+  { name: "images" },
+  { name: "profile_image" },
+  { name: "review_images" },
+]);
 
 // middleware for encryption
 function encode(req, res, next) {

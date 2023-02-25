@@ -389,13 +389,13 @@ exports.addReview = async (req, res) => {
       }
     }
 
-    req.body.review = JSON.parse(req.body.review);
+    // req.body.review = JSON.parse(req.body.review);
 
     req.body.review_images = imageURLs;
     req.body.review_videos = videoURLs;
 
     if (req.body.review === undefined)
-      return res.sendStatus(203).send("Review Box doesn't be empty.");
+      return res.sendStatus(203).send("Review Box cannot be empty.");
     console.log("Final Body >>>", req.body);
 
     const data = review(req.body);
@@ -466,7 +466,7 @@ exports.verifyReview = async (req, res) => {
   }
 };
 
-// adding reply
+// adding reply not in use now
 exports.addReply = async (req, res) => {
   try {
     console.log("body>>>", req.body);
