@@ -45,7 +45,7 @@ exports.addCartItem = async (req, res) => {
 };
 
 exports.removeCartItem = async (req, res) => {
-  console.log(req.query);
+  // console.log(req.query);
   // data
   cart
     .deleteMany({

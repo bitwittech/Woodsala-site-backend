@@ -38,7 +38,12 @@ exports.getProducts = async (req, res) => {
 
   if (req.query.product_title !== "undefined")
     filterArray.push({
-      product_title: { $regex: req.query.product_title, $options: "i" },
+      product_title: {
+        $regex: req.query.product_title.includes(")")
+          ? req.query.product_title.split(")")[1]
+          : req.query.product_title,
+        $options: "i",
+      },
     });
 
   if (filter.price)
@@ -83,7 +88,7 @@ exports.getProducts = async (req, res) => {
 
   if (filterArray.length > 0) query = { $or: filterArray };
 
-  console.log(JSON.stringify(query));
+  // console.log(JSON.stringify(query));
 
   // final aggregation computing
   product
@@ -231,6 +236,7 @@ exports.getProductDetails = async (req, res) => {
       {
         $group: {
           _id: "$_id",
+          ACIN: { $first: "$ACIN" },
           product_title: { $first: "$product_title" },
           product_image: { $first: "$product_image" },
           featured_image: { $first: "$featured_image" },
@@ -246,6 +252,7 @@ exports.getProductDetails = async (req, res) => {
           breadth: { $first: "$breadth" },
           primary_material: { $first: "$primary_material" },
           polish: { $first: "$polish" },
+          fabric: { $first: "$fabric" },
         },
       },
       {
@@ -260,6 +267,7 @@ exports.getProductDetails = async (req, res) => {
     if (productDetail.length > 0) {
       // for getting under the array
       productDetail = productDetail[0];
+      console.log(productDetail);
       let variants = await product.find(
         {
           $and: [
@@ -277,6 +285,7 @@ exports.getProductDetails = async (req, res) => {
           primary_material: 1,
           product_title: 1,
           category_name: 1,
+          fabric: 1,
         }
       );
 
@@ -284,6 +293,7 @@ exports.getProductDetails = async (req, res) => {
         size: [],
         range: [],
         material: [],
+        fabric: [],
       };
 
       if (variants.length > 0) {
@@ -306,7 +316,10 @@ exports.getProductDetails = async (req, res) => {
             }`,
           });
           // for material
-          if (row.primary_material.length > 0)
+          if (
+            row.primary_material.length > 0 &&
+            !row.primary_material.includes("")
+          )
             variant_params.material.push({
               SKU: [row.SKU],
               category: row.category_name,
@@ -314,16 +327,24 @@ exports.getProductDetails = async (req, res) => {
               material: row.primary_material.join(),
             });
           // range
-          if (row.range !== "None")
+          if (row.range !== "None" && row.range)
             variant_params.range.push({
               SKU: [row.SKU],
               category: row.category_name,
               title: row.product_title,
               range: row.range,
             });
+          // fabric
+          if (row.fabric !== "None" && row.fabric)
+            variant_params.range.push({
+              SKU: [row.SKU],
+              category: row.category_name,
+              title: row.product_title,
+              fabric: row.fabric,
+            });
         });
 
-        // adding the present one
+        // adding the present one as the variant of itself
         variant_params.size.push({
           SKU: [productDetail.SKU],
           category: productDetail.category_name,
@@ -339,20 +360,32 @@ exports.getProductDetails = async (req, res) => {
             " H "
           }`,
         });
-        variant_params.material.push({
-          SKU: [productDetail.SKU],
-          category: productDetail.category_name,
-          title: productDetail.product_title,
-          material: productDetail.primary_material.join(),
-        });
-        variant_params.range.push({
-          SKU: [productDetail.SKU],
-          category: productDetail.category_name,
-          title: productDetail.product_title,
-          range: productDetail.range,
-        });
+        if (
+          productDetail.primary_material.length > 0 &&
+          !productDetail.primary_material.includes("")
+        )
+          variant_params.material.push({
+            SKU: [productDetail.SKU],
+            category: productDetail.category_name,
+            title: productDetail.product_title,
+            material: productDetail.primary_material.join(),
+          });
+        if (productDetail.range !== "None" && productDetail.range)
+          variant_params.range.push({
+            SKU: [productDetail.SKU],
+            category: productDetail.category_name,
+            title: productDetail.product_title,
+            range: productDetail.range,
+          });
+        if (productDetail.fabric !== "None" && productDetail.fabric)
+          variant_params.fabric.push({
+            SKU: [productDetail.SKU],
+            category: productDetail.category_name,
+            title: productDetail.product_title,
+            fabric: productDetail.fabric,
+          });
 
-        // console.log(variant_params)
+        // console.log(variant_params);
         return res.send({
           data: productDetail,
           variant: { ...variant_params, show: true },

@@ -12,7 +12,7 @@ const review = mongoose.Schema({
   yourTube_url: { type: String },
   reviewer_name: { type: String },
   reviewer_email: { type: String },
-  hide: { type: Boolean, default: false },
+  hide: { type: Boolean, default: true },
   date: { type: Date, default: Date.now() },
 });
 
