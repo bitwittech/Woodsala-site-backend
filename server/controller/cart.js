@@ -1,6 +1,8 @@
 const cart = require("../../database/models/cart");
 const product = require("../../database/models/product");
 const order = require("../../database/models/order");
+const abandoned = require("../../database/models/abandoned");
+const uuid = require("uuid");
 
 // paymnt get way
 const Razorpay = require("razorpay");
@@ -77,47 +79,45 @@ exports.getCartItem = async (req, res) => {
 
 // get cart item
 exports.getDetails = async (req, res) => {
-
-  try{
+  try {
     // console.log(JSON.parse(req.query.products))
-    const products = JSON.parse(req.query.products)
-  
-    const response =  await Promise.all(products.map((search)=>{
-      return  product
-      .aggregate([
-        { $match: { SKU: search } },
-        {
-          $group: {
-            _id: "$_id",
-            product_title: { $first: "$product_title" },
-            product_image: { $first: "$product_image" },
-            featured_image: { $first: "$featured_image" },
-            product_description: { $first: "$product_description" },
-            MRP: { $first: "$selling_price" },
-            selling_price: { $first: "$selling_price" },
-            discount_limit: { $first: "$discount_limit" },
-            SKU: { $first: "$SKU" },
-            category_name: { $first: "$category_name" },
-          },
-        },
-        {
-          $lookup: {
-            from: "categories",
-            localField: "category_name",
-            foreignField: "category_name",
-            as: "categories",
-          },
-        }
-      ])
+    const products = JSON.parse(req.query.products);
 
-    }))
+    const response = await Promise.all(
+      products.map((search) => {
+        return product.aggregate([
+          { $match: { SKU: search } },
+          {
+            $group: {
+              _id: "$_id",
+              product_title: { $first: "$product_title" },
+              product_image: { $first: "$product_image" },
+              featured_image: { $first: "$featured_image" },
+              product_description: { $first: "$product_description" },
+              MRP: { $first: "$selling_price" },
+              selling_price: { $first: "$selling_price" },
+              discount_limit: { $first: "$discount_limit" },
+              SKU: { $first: "$SKU" },
+              category_name: { $first: "$category_name" },
+            },
+          },
+          {
+            $lookup: {
+              from: "categories",
+              localField: "category_name",
+              foreignField: "category_name",
+              as: "categories",
+            },
+          },
+        ]);
+      })
+    );
 
-      return res.send(response);
-   }
-    catch(err) {
-      console.log('Error >> ',err)
-      return res.status(500).send({ message: "Something went wrong !!!" });
-    };
+    return res.send(response);
+  } catch (err) {
+    console.log("Error >> ", err);
+    return res.status(500).send({ message: "Something went wrong !!!" });
+  }
 };
 
 // update quantity
@@ -199,3 +199,24 @@ exports.verifyPayment = async (req, res) => {
     res.status(500).send(error);
   }
 };
+
+
+// api for collecting abandoned orders 
+exports.placeAbandonedOrders = async(req,res)=>{
+  try{
+    req.body.uuid = uuid.v4();
+    // console.log(req.body)
+    // let save it up 
+    let response = await abandoned(req.body).save();
+    if(response)
+    {
+      // console.log(response)
+      return res.send('Order add as abandoned.')
+
+    }
+  }
+  catch(err){
+    console.log("Error>>",err)
+    return res.status(500).send('Something Went Wrong !!!')
+  }
+}

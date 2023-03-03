@@ -167,6 +167,9 @@ route.patch("/updateQuantity", cart.updateQuantity);
 // place order
 route.post("/placeOrder", upload, cart.placeOrder);
 
+// abandoned order
+route.post("/abandonedOrder", upload, cart.placeAbandonedOrders);
+
 // verify payment
 route.post("/verifyPayment", upload, cart.verifyPayment);
 
