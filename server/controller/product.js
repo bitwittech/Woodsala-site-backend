@@ -247,7 +247,7 @@ exports.getProductDetails = async (req, res) => {
           discount_limit: { $first: "$discount_limit" },
           SKU: { $first: "$SKU" },
           category_name: { $first: "$category_name" },
-          sub_category_name: { $first: "$category_name" },
+          sub_category_name: { $first: "$sub_category_name" },
           length_main: { $first: "$length_main" },
           height: { $first: "$height" },
           breadth: { $first: "$breadth" },

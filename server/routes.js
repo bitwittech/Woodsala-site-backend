@@ -12,6 +12,7 @@ const cart = require("./controller/cart");
 const wishlist = require("./controller/wishlist");
 const blog = require("./controller/blog");
 const contact = require("./controller/contact");
+const  utility  = require("./controller/utility");
 
 // middleware for the multer setup
 
@@ -202,5 +203,9 @@ route.post("/addReply", upload, product.addReply);
 // ============== Contact Us page
 
 route.post("/addContact", upload, contact.addContact);
+
+// get the banner 
+
+route.get('/getBanner',utility.getBanner)
 
 module.exports = route;
