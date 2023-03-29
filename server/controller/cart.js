@@ -2,6 +2,7 @@ const cart = require("../../database/models/cart");
 const product = require("../../database/models/product");
 const order = require("../../database/models/order");
 const abandoned = require("../../database/models/abandoned");
+const cod = require("../../database/models/COD");
 const uuid = require("uuid");
 
 // paymnt get way
@@ -154,6 +155,7 @@ exports.placeOrder = async (req, res) => {
 
     return res.json(order);
   } catch (error) {
+    console.log(error)
     res.status(500).send(error);
   }
 };
@@ -219,4 +221,17 @@ exports.placeAbandonedOrders = async(req,res)=>{
     console.log("Error>>",err)
     return res.status(500).send('Something Went Wrong !!!')
   }
+}
+
+exports.cod_limit = async(req,res)=>{
+  try{
+    let response = await cod.find({})
+    if(response)
+    return res.send(response)
+  }
+  catch(err){
+    console.log(err)
+    res.status(500).send({message : 'Something went wrong !!!'})
+  }
+
 }

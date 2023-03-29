@@ -208,4 +208,8 @@ route.post("/addContact", upload, contact.addContact);
 
 route.get('/getBanner',utility.getBanner)
 
+// get the cod 
+
+route.get('/cod_limit',cart.cod_limit)
+
 module.exports = route;

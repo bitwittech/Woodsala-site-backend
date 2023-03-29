@@ -11,6 +11,7 @@ const product = mongoose.Schema({
   sub_category_name: { type: String, default: "None" },
   sub_category_id: { type: String, default: "None" },
   product_description: { type: String },
+  dial: { type: Boolean, default : false },
   seo_title: { type: String },
   seo_description: { type: String },
   seo_keyword: { type: String },
@@ -128,7 +129,5 @@ const product = mongoose.Schema({
   metal_weight: { type: String, default: 0 },
 });
 
-// old table
 // module.exports = mongoose.model("product", product);
-// new table
 module.exports = mongoose.model("new_product", product);

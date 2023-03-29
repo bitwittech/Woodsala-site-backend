@@ -260,6 +260,8 @@ exports.getProductDetails = async (req, res) => {
           polish_time: { $first: "$polish_time" },
           manufacturing_time: { $first: "$manufacturing_time" },
           quantity: { $first: "$quantity" },
+          fitting: { $first: "$fitting" },
+          fitting_name: { $first: "$fitting_name" },
         },
       },
       {
@@ -293,6 +295,8 @@ exports.getProductDetails = async (req, res) => {
           product_title: 1,
           category_name: 1,
           fabric: 1,
+          fitting_name: 1,
+          mattress: 1,
         }
       );
 
@@ -301,10 +305,69 @@ exports.getProductDetails = async (req, res) => {
         range: [],
         material: [],
         fabric: [],
+        fitting : [],
+        mattress : [],
       };
 
       if (variants.length > 0) {
-        // console.log('Variants >>> ', variants);
+
+          // adding the present one as the variant of itself
+          variant_params.size.push({
+            SKU: [productDetail.SKU],
+            category: productDetail.category_name,
+            title: productDetail.product_title,
+            size: `${
+              productDetail.length_main +
+              "L" +
+              " x " +
+              productDetail.breadth +
+              "B" +
+              " x " +
+              productDetail.height +
+              " H "
+            }`,
+          });
+          if (
+            productDetail.primary_material.length > 0 &&
+            !productDetail.primary_material.includes("")
+          )
+            variant_params.material.push({
+              SKU: [productDetail.SKU],
+              category: productDetail.category_name,
+              title: productDetail.product_title,
+              material: productDetail.primary_material.join(),
+            });
+          if (productDetail.range !== "None" && productDetail.range)
+            variant_params.range.push({
+              SKU: [productDetail.SKU],
+              category: productDetail.category_name,
+              title: productDetail.product_title,
+              range: productDetail.range,
+            });
+          if (productDetail.fabric !== "None" && productDetail.fabric)
+            variant_params.fabric.push({
+              SKU: [productDetail.SKU],
+              category: productDetail.category_name,
+              title: productDetail.product_title,
+              fabric: productDetail.fabric,
+            });
+          if (productDetail.fitting_name !== "None" && productDetail.fitting_name)
+            variant_params.fitting.push({
+              SKU: [productDetail.SKU],
+              category: productDetail.category_name,
+              title: productDetail.product_title,
+              fitting: productDetail.fitting_name,
+            });
+          // if (productDetail.mattress !== "None" && productDetail.mattress)
+          //   variant_params.mattress.push({
+          //     SKU: [productDetail.SKU],
+          //     category: productDetail.category_name,
+          //     title: productDetail.product_title,
+          //     mattress: productDetail.mattress,
+          //   });
+
+
+        // collenction variants
         await variants.map((row) => {
           // for size
           variant_params.size.push({
@@ -349,50 +412,25 @@ exports.getProductDetails = async (req, res) => {
               title: row.product_title,
               fabric: row.fabric,
             });
+          // fitting
+          if (row.fitting_name !== "None" && row.fitting_name)
+            variant_params.fitting.push({
+              SKU: [row.SKU],
+              category: row.category_name,
+              title: row.product_title,
+              fitting: row.fitting_name,
+            });
+          // mattress
+          // if (row.mattress !== "None" && row.mattress)
+          //   variant_params.mattress.push({
+          //     SKU: [row.SKU],
+          //     category: row.category_name,
+          //     title: row.product_title,
+          //     mattress: row.mattress,
+          //   });
         });
 
-        // adding the present one as the variant of itself
-        variant_params.size.push({
-          SKU: [productDetail.SKU],
-          category: productDetail.category_name,
-          title: productDetail.product_title,
-          size: `${
-            productDetail.length_main +
-            "L" +
-            " x " +
-            productDetail.breadth +
-            "B" +
-            " x " +
-            productDetail.height +
-            " H "
-          }`,
-        });
-        if (
-          productDetail.primary_material.length > 0 &&
-          !productDetail.primary_material.includes("")
-        )
-          variant_params.material.push({
-            SKU: [productDetail.SKU],
-            category: productDetail.category_name,
-            title: productDetail.product_title,
-            material: productDetail.primary_material.join(),
-          });
-        if (productDetail.range !== "None" && productDetail.range)
-          variant_params.range.push({
-            SKU: [productDetail.SKU],
-            category: productDetail.category_name,
-            title: productDetail.product_title,
-            range: productDetail.range,
-          });
-        if (productDetail.fabric !== "None" && productDetail.fabric)
-          variant_params.fabric.push({
-            SKU: [productDetail.SKU],
-            category: productDetail.category_name,
-            title: productDetail.product_title,
-            fabric: productDetail.fabric,
-          });
-
-        // console.log(variant_params);
+        console.log(variant_params);
         return res.send({
           data: productDetail,
           variant: { ...variant_params, show: true },
