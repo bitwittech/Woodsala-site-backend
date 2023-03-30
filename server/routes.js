@@ -148,6 +148,9 @@ route.post("/addReview", upload, product.addReview);
 // list Review
 route.get("/listReview", product.listReview);
 
+// list Review
+route.get("/fetchVariants", product.fetchVariants);
+
 // ==================== Cart routes ==========================
 
 // add item in cart
