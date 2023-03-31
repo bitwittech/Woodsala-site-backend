@@ -86,7 +86,7 @@ route.use(bodyParser.json());
 // middleware For Authentication
 
 function AuthJwt(req, res, next) {
-  // //async (req,res)(req.headers)
+  // async (req,res)(req.headers)
 
   if (req.headers.authorization === undefined) return res.sendStatus(401);
 
@@ -148,8 +148,11 @@ route.post("/addReview", upload, product.addReview);
 // list Review
 route.get("/listReview", product.listReview);
 
-// list Review
+// list variant
 route.get("/fetchVariants", product.fetchVariants);
+
+// get coupon
+route.get("/verifyCoupon", product.verifyCoupon);
 
 // ==================== Cart routes ==========================
 

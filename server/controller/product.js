@@ -1,6 +1,7 @@
 const { raw } = require("body-parser");
 const product = require("../../database/models/product");
 const review = require("../../database/models/review");
+const coupon = require("../../database/models/coupon");
 const nodemailer = require("nodemailer");
 
 let officialURL = "https://woodshala.in";
@@ -295,106 +296,21 @@ exports.fetchVariants = async (req, res) => {
       {
         _id: 1,
         SKU: 1,
-        length_main: 1,
-        breadth: 1,
-        height: 1,
-        range: 1,
         primary_material: 1,
         product_title: 1,
+        product_image: 1,
         category_name: 1,
-        fabric: 1,
-        fitting_name: 1,
-        mattress: 1,
-        mattress_length : 1,
-        mattress_breadth : 1,
       }
     );
 
-    let variant_params = {
-      size: [],
-      range: [],
-      material: [],
-      fabric: [],
-      fitting : [],
-      mattress : [],
-    };
 
     console.log(variants)
     if (variants.length > 1) {
 
-      // collecting variants
-      await variants.map((row) => {
-        // for size
-        variant_params.size.push({
-          SKU: row.SKU,
-          category: row.category_name,
-          title: row.product_title,
-          size: `${
-            row.length_main +
-            "L" +
-            " x " +
-            row.breadth +
-            "B" +
-            " x " +
-            row.height +
-            " H "
-          }`,
-        });
-        // for material
-        if (
-          row.primary_material.length > 0 &&
-          !row.primary_material.includes("")
-        )
-          variant_params.material.push({
-            SKU: row.SKU,
-            category: row.category_name,
-            title: row.product_title,
-            material: row.primary_material.join(),
-          });
-        // range
-        if (row.range !== "None" && row.range)
-          variant_params.range.push({
-            SKU: row.SKU,
-            category: row.category_name,
-            title: row.product_title,
-            range: row.range,
-          });
-        // fabric
-        if (row.fabric !== "None" && row.fabric)
-          variant_params.range.push({
-            SKU: row.SKU,
-            category: row.category_name,
-            title: row.product_title,
-            fabric: row.fabric,
-          });
-        // fitting
-        if (row.fitting_name !== "None" && row.fitting_name)
-          variant_params.fitting.push({
-            SKU: row.SKU,
-            category: row.category_name,
-            title: row.product_title,
-            fitting: row.fitting_name,
-          });
-        // mattress
-        if (row.mattress === "yes")
-        {variant_params.mattress.push({
-          SKU: row.SKU,
-          category: row.category_name,
-          title: row.product_title,
-          mattress: `${
-            row.mattress_length +
-            "L" +
-            " x " +
-            row.mattress_breadth +
-            "B"
-          }`,
-        });
-        }
-      });
-      res.send({...variant_params, show : true})
+      res.send({variants, show : true})
     }
     else {
-      res.send({...variant_params, show : false})
+      res.send({variants : [], show : false})
       // res.send({variants : variant_params, show : false})
     }
 
@@ -525,3 +441,149 @@ exports.addReply = async (req, res) => {
     res.status(500).send({ message: "Something Went Wrong !!!" });
   }
 };
+
+exports.verifyCoupon = async (req,res)=>{
+  try {
+    const {code,email} = req.query;
+
+    if(!email || !code ) return res.status(203).send({message : "No credentials found !!!"})
+
+    // let's find out the coupon properties
+    const properties = await coupon.findOne({'coupon_code': code})
+
+    if(properties)
+    {
+      res.send(properties)
+    }
+    else {
+      res.status(203).send({message : 'Not a valid token !!!'})
+    }
+    
+  } catch (error) {
+    console.log(error)
+    res.status(500).send("Something Went Wrong !!!")
+  }
+}
+
+/// old variation 
+// exports.fetchVariants = async (req, res) => {
+//   if (req.query === {})
+//     return res.status(406).send({ message: "Please Provide the product id." });
+
+//   try {
+
+//     let {ACIN} = req.query
+  
+//     let variants = await product.find(
+//           { ACIN: ACIN },
+//       {
+//         _id: 1,
+//         SKU: 1,
+//         length_main: 1,
+//         breadth: 1,
+//         height: 1,
+//         range: 1,
+//         primary_material: 1,
+//         product_title: 1,
+//         category_name: 1,
+//         fabric: 1,
+//         fitting_name: 1,
+//         mattress: 1,
+//         mattress_length : 1,
+//         mattress_breadth : 1,
+//       }
+//     );
+
+//     let variant_params = {
+//       size: [],
+//       range: [],
+//       material: [],
+//       fabric: [],
+//       fitting : [],
+//       mattress : [],
+//     };
+
+//     console.log(variants)
+//     if (variants.length > 1) {
+
+//       // collecting variants
+//       await variants.map((row) => {
+//         // for size
+//         variant_params.size.push({
+//           SKU: row.SKU,
+//           category: row.category_name,
+//           title: row.product_title,
+//           size: `${
+//             row.length_main +
+//             "L" +
+//             " x " +
+//             row.breadth +
+//             "B" +
+//             " x " +
+//             row.height +
+//             " H "
+//           }`,
+//         });
+//         // for material
+//         if (
+//           row.primary_material.length > 0 &&
+//           !row.primary_material.includes("")
+//         )
+//           variant_params.material.push({
+//             SKU: row.SKU,
+//             category: row.category_name,
+//             title: row.product_title,
+//             material: row.primary_material.join(),
+//           });
+//         // range
+//         if (row.range !== "None" && row.range)
+//           variant_params.range.push({
+//             SKU: row.SKU,
+//             category: row.category_name,
+//             title: row.product_title,
+//             range: row.range,
+//           });
+//         // fabric
+//         if (row.fabric !== "None" && row.fabric)
+//           variant_params.range.push({
+//             SKU: row.SKU,
+//             category: row.category_name,
+//             title: row.product_title,
+//             fabric: row.fabric,
+//           });
+//         // fitting
+//         if (row.fitting_name !== "None" && row.fitting_name)
+//           variant_params.fitting.push({
+//             SKU: row.SKU,
+//             category: row.category_name,
+//             title: row.product_title,
+//             fitting: row.fitting_name,
+//           });
+//         // mattress
+//         if (row.mattress === "yes")
+//         {variant_params.mattress.push({
+//           SKU: row.SKU,
+//           category: row.category_name,
+//           title: row.product_title,
+//           mattress: `${
+//             row.mattress_length +
+//             "L" +
+//             " x " +
+//             row.mattress_breadth +
+//             "B"
+//           }`,
+//         });
+//         }
+//       });
+//       res.send({...variant_params, show : true})
+//     }
+//     else {
+//       res.send({...variant_params, show : false})
+//       // res.send({variants : variant_params, show : false})
+//     }
+
+//   } catch (err) {
+//     console.log("ERROR>>> ", err);
+//     return res.send({ message: "Something went wrang !!!" });
+//   }
+// };
