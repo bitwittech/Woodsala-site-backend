@@ -4,6 +4,8 @@ const bcrypt = require("bcrypt");
 const JWT = require("jsonwebtoken");
 const { v4: uuidv4 } = require("uuid");
 const nodemailer = require("nodemailer");
+const sdk = require('api')('@servetel/v1.0#14z732fkuc911ee');
+
 // DB modules
 const userDB = require("../../database/models/user");
 const { env } = require("process");
@@ -190,5 +192,36 @@ exports.verify = async (req, res) => {
     return res.status(200).send(user);
   });
 };
+
+
+exports.sendOTP = async (req,res) =>{
+  try{
+console.log('log')
+    let response = await sdk.postV1Send_sms({
+      customer_number: 8302043259,
+      message: 'hello ',
+      type: 'text'
+    }, {
+      authorization: 'eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJodHRwczpcL1wvY3VzdG9tZXIuc2VydmV0ZWwuaW5cL2FwaVwvdjFcL2F1dGhcL2xvZ2luIiwiaWF0IjoxNjgwNjEyMDU5LCJleHAiOjE2ODA2MTU2NTksIm5iZiI6MTY4MDYxMjA1OSwianRpIjoiT3JqU0tWUWhlc05TdHVSdSIsInN1YiI6MTE3ODA0fQ.fV6Xau4NmIYzyuWGF0_1Rf4ULHsBKKNWZR6dw70_d50'
+    })
+
+    let {success, message} = response.data
+
+    console.log(response.data)
+    if(success)
+    {
+     res.send('message sent')
+    }
+    else{
+      res.status(203).send('Some error occoured')
+
+    }
+      
+      }
+      catch(error){
+        console.log(error)
+        res.send(500).send("Something went Wrong !!!")
+      }
+}
 
 // ================================================= Apis for User Ends =======================================================

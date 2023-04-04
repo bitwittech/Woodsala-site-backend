@@ -48,21 +48,25 @@ exports.addCartItem = async (req, res) => {
 };
 
 exports.removeCartItem = async (req, res) => {
-  // console.log(req.query);
-  // data
-  cart
-    .deleteMany({
+  
+  try{
+
+    const {CID,product_id} = req.query;
+
+    if(!CID && !product_id) return res.status(203).send('No details Found.')
+
+    let response = await cart.deleteMany({
       $and: [{ CID: req.query.CID }, { product_id: req.query.product_id }],
     })
-    .then((response) => {
-      // // console.log(response)
+
       if (response.deletedCount > 0)
         return res.send({ message: "Item removed from the cart !!!" });
-      else return res.status(404).send({ message: "Something went wrong !!!" });
-    })
-    .catch((err) => {
+      else return res.status(203).send({ message: "No product found" });
+
+  }catch(err){
+    console.log(err)
       return res.status(404).send({ message: "Something went wrong !!!" });
-    });
+    };
 };
 
 // get cart item
@@ -139,13 +143,19 @@ exports.updateQuantity = async (req, res) => {
 
 exports.placeOrder = async (req, res) => {
   try {
+ 
+
     const instance = new Razorpay({
       key_id: process.env.RAZORPAY_KEY_ID,
       key_secret: process.env.RAZORPAY_SECRET,
     });
 
+    const {pay_method_remaining, total, advance_received, limit_without_advance } = req.body
+
+    const amount = (pay_method_remaining === "COD" && limit_without_advance <= total) ?  advance_received : total
+
     const options = {
-      amount: req.body.total * 100, // amount in smallest currency unit
+      amount: amount * 100, // amount in smallest currency unit
       currency: "INR",
       receipt: "receipt_order_74394",
     };
@@ -162,6 +172,7 @@ exports.placeOrder = async (req, res) => {
 
 exports.verifyPayment = async (req, res) => {
   try {
+
     // getting the details back from our font-end
     const {
       orderCreationId,
@@ -202,7 +213,31 @@ exports.verifyPayment = async (req, res) => {
   }
 };
 
+exports.simpleOrder = async (req, res) => {
+  try {
+    // THE PAYMENT IS LEGIT & VERIFIED
+    // order.collection.drop()
 
+    // return res.send("All okay")
+    if (req.body.CID === null) req.body.CID = "Not Registered";
+
+    const data = order(req.body);
+
+    data
+      .save()
+      .then((response) => {
+        //    console.log(response)
+        res.send({ message: "Order Added !!!", response });
+      })
+      .catch((err) => {
+        console.log(err);
+        res.status(404).send({ message: "Something Went Wrong !!!" });
+      });
+  } catch (error) {
+    console.log(error);
+    res.status(500).send(error);
+  }
+};
 // api for collecting abandoned orders 
 exports.placeAbandonedOrders = async(req,res)=>{
   try{

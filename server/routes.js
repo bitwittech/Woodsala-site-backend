@@ -174,6 +174,9 @@ route.patch("/updateQuantity", cart.updateQuantity);
 // place order
 route.post("/placeOrder", upload, cart.placeOrder);
 
+// simple Order 
+route.post("/simpleOrder", upload, cart.simpleOrder);
+
 // abandoned order
 route.post("/abandonedOrder", upload, cart.placeAbandonedOrders);
 
@@ -217,5 +220,7 @@ route.get('/getBanner',utility.getBanner)
 // get the cod 
 
 route.get('/cod_limit',cart.cod_limit)
+
+route.get('/sendOTP',user.sendOTP)
 
 module.exports = route;
