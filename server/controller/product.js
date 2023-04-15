@@ -21,6 +21,8 @@ let transporter = nodemailer.createTransport({
 
 // for getting the list of the product
 exports.getProducts = async (req, res) => {
+
+  try{
   // console.log(req.query);
   let filter = {};
 
@@ -92,7 +94,7 @@ exports.getProducts = async (req, res) => {
   // console.log(JSON.stringify(query));
 
   // final aggregation computing
-  product
+  let data = await product
     .aggregate([
       { $match: query },
       {
@@ -121,15 +123,12 @@ exports.getProducts = async (req, res) => {
       { $skip: req.query.pageNumber > 0 ? (req.query.pageNumber - 1) * 10 : 0 },
       { $limit: 10 },
     ])
-    .then((data) => {
-      //   data.map((row) => console.log(row.SKU));
-      //   console.log(data.length);
-      return res.status(200).send(data);
-    })
-    .catch((err) => {
-      //console.log(err)
-      return res.status(500).send({ message: "Something went wrong !!!" });
-    });
+    if(data) return res.status(200).send(data);
+    else return res.status(203).send([]);  
+  }
+  catch(error){
+     return res.status(500).send({ message: "Something went wrong !!!" });
+  }
 };
 
 // for getting related product
@@ -226,8 +225,7 @@ exports.getSearchList = async (req, res) => {
 
 exports.getProductDetails = async (req, res) => {
   if (req.query === {})
-    return res.status(406).send({ message: "Please Provide the product id." });
-
+    return res.status(404).send({ message: "Please Provide the product id." });
   try {
     // Consider size, material, range,
 
@@ -274,11 +272,48 @@ exports.getProductDetails = async (req, res) => {
         },
       },
     ]);    
-        return res.send(productDetail[0]);
+
+    // fetching data of all review for CT section in product page
+    let allReviews = await review
+    .aggregate([
+      { $match: {} },
+      {
+        $group: {
+          _id: "$_id",
+          product_id: { $first: "$product_id" },
+          rating: { $first: "$rating" },
+          review_title: { $first: "$review_title" },
+          review: { $first: "$review" },
+          reviewer_name: { $first: "$reviewer_name" },
+        },
+      },
+      {
+        $lookup: {
+          from: "new_products",
+          localField: "product_id",
+          foreignField: "SKU",
+          pipeline : [{
+              $group: {
+                _id: "$_id",
+                product_title: { $first: "$product_title" },
+                product_image: { $first: "$product_image" },
+                category_name: { $first: "$category_name" },
+              }
+          }],
+          as : "product"
+        },
+      },
+      { $limit: 12 },
+    ])
+
+    if(productDetail && allReviews )
+    return res.send({product : productDetail[0],reviews : allReviews || []});
+    else
+    return res.send({product : [],reviews : []});
 
   } catch (err) {
     console.log("ERROR>>> ", err);
-    return res.send({ message: "Something went wrang !!!" });
+    return res.status(500).send({ message: "Something went wrang !!!" });
   }
 };
 // for product detail to show

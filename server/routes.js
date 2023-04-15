@@ -221,6 +221,7 @@ route.get('/getBanner',utility.getBanner)
 
 route.get('/cod_limit',cart.cod_limit)
 
-route.get('/sendOTP',user.sendOTP)
+route.get('/captcha',user.captcha)
+
 
 module.exports = route;

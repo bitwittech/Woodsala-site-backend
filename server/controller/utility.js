@@ -7,7 +7,7 @@ exports.getBanner = async(req,res)=>{
         let response = await banner.find({web_banner_status : true},{web_banner : 1,sequence_no : 1});
         let bannerArr = response.sort((a,b)=>(a.sequence_no - b.sequence_no));
 
-        console.log(bannerArr);
+        // console.log(bannerArr);
         return res.send({data : [...bannerArr]})
     } catch (error) {
         console.log('Error>>',error)

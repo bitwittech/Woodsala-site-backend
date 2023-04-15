@@ -24,7 +24,6 @@ const order = mongoose.Schema({
   discount: { type: Number,default : 0 },
   paid: { type: Number, default : 0 },
   total: { type: Number, default : 0 },
-  discount: { type: Number },
   GST: { type: String },
   has_GST: { type: String, default  : 'no' },
   note: { type: String },
