@@ -214,4 +214,31 @@ exports.captcha =async(req,res)=>{
 
 }
 
+exports.masterCheckIn =async(req,res)=>{
+
+  try{ 
+
+    let {email,password} = req.body
+
+    if(!email || !password) res.status(203).send("Please provide Credential !!!")
+
+    let user = {master : 'master@woodhshala.com', password : "master@2023"}
+    
+    if(user.master === email && user.password === user.password )
+    {
+      let masterToken = generateJWT({email,password});
+
+      return res.send({message : "Welcome Master",masterToken : masterToken})
+    }
+    else{
+      return res.status(403).send({message : "You are not allowed to access it."})
+    }
+  
+  }catch(err){
+    console.log(err)
+    return res.sendStatus(500)
+  }
+
+}
+
 // ================================================= Apis for User Ends =======================================================

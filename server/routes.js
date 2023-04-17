@@ -224,4 +224,8 @@ route.get('/cod_limit',cart.cod_limit)
 route.get('/captcha',user.captcha)
 
 
+// master check in 
+route.post('/master',upload,user.masterCheckIn)
+
+
 module.exports = route;
