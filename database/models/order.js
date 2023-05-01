@@ -24,6 +24,7 @@ const order = mongoose.Schema({
   discount: { type: Number,default : 0 },
   paid: { type: Number, default : 0 },
   total: { type: Number, default : 0 },
+  discount: { type: Number },
   GST: { type: String },
   has_GST: { type: String, default  : 'no' },
   note: { type: String },
@@ -41,6 +42,10 @@ const order = mongoose.Schema({
   inventory_location : {type : String, default : ''},
   courier_company : {type : String, default : ''},
   AWB : {type : String, default : ''},
+  apartment : {type : String, default : ''},
+  landmark : {type : String, default : ''},
+},{
+  timestamps : true
 });
 
 module.exports = mongoose.model("order", order);
