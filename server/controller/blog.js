@@ -56,19 +56,20 @@ exports.updateBlog = async (req, res) => {
 // Api for card extraction for Home
 
 exports.getBlogHome = async (req, res) => {
-  // get data from db
-  await blogDB
-    .find()
-    .then((data) => {
+
+  try {
+    let data =await blogDB.find()
+    
+    if(data) {
       // //console.log("Data fetched", data);
       if (data != null) return res.send(data);
       else return res.send({ message: "No post yet" });
-    })
+    }
+  } catch (error) {
+    console.log(error);
+    return res.status(500).send({ massage: "No data !!!" });
+  }
 
-    .catch((err) => {
-      // //console.log({ massage: "No Data !!!", err });
-      return res.status(203).send({ massage: "No data !!!" });
-    });
 };
 
 // get specific blog by uuid
