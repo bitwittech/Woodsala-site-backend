@@ -1,6 +1,6 @@
 require("dotenv").config();
 
-const blogDB = require("../../database/models/blog");
+const blog = require("../../database/models/blog");
 
 const uuid = require("uuid");
 
@@ -16,7 +16,7 @@ exports.createBlog = async (req, res) => {
     return res.status(203).send({ message: "Image Is Required !!!" });
   req.body.card_image = `${process.env.Official}/${req.files["banner_image"][0].path}`;
 
-  let SaveToDb = new blogDB(req.body);
+  let SaveToDb = new blog(req.body);
 
   // saving data to db
   await SaveToDb.save()
@@ -41,7 +41,7 @@ exports.updateBlog = async (req, res) => {
   if (req.files["banner_image"] !== undefined)
     req.body.card_image = `${process.env.Official}/${req.files["banner_image"][0].path}`;
 
-  await blogDB
+  await blog
     .findOneAndUpdate({ _id: req.body._id }, req.body)
     .then((data) => {
       //console.log("Blog Update Successfully !!!");
@@ -57,26 +57,39 @@ exports.updateBlog = async (req, res) => {
 
 exports.getBlogHome = async (req, res) => {
 
+  const pageNumber = req.query.pageNumber || 0
+
   try {
-    let data =await blogDB.find()
+    let data = await blog
+    .aggregate([
+      { $match: {} },
+      {
+        $group: {
+          _id: "$_id",
+          uuid : {"$first": "$uuid"} ,
+          title : {"$first": "$title"} ,
+          card_image : {"$first": "$card_image"} ,
+        },
+      },
+      { $sort: { timestamps: -1 } },
+      { $skip: pageNumber > 0 ? (pageNumber - 1) * 10 : 0 },
+      { $limit: 10  },
+    ])
+
+    // console.log(data)
     
-    if(data) {
-      // //console.log("Data fetched", data);
-      if (data != null) return res.send(data);
-      else return res.send({ message: "No post yet" });
-    }
+    if(data) return res.send(data);
   } catch (error) {
     console.log(error);
-    return res.status(500).send({ massage: "No data !!!" });
+    return res.status(500).send({ massage: "Something Went Wrong !!!" });
   }
-
 };
 
 // get specific blog by uuid
 
 exports.getBlog = async (req, res) => {
   //console.log(req.query)
-  await blogDB
+  await blog
     .findOne({ uuid: req.query.uuid })
     .then((data) => {
       //console.log(data)
@@ -92,7 +105,7 @@ exports.getBlog = async (req, res) => {
 
 exports.deleteBLog = async (req, res) => {
   console.log(req.query);
-  await blogDB
+  await blog
     .deleteOne({ _id: req.query._id })
     .then((data) => {
       return res.send({ message: "Blog Deleted Successfully !!!" });
