@@ -104,6 +104,7 @@ exports.getDetails = async (req, res) => {
               discount_limit: { $first: "$discount_limit" },
               SKU: { $first: "$SKU" },
               category_name: { $first: "$category_name" },
+              assembly_part: { $first: "$assembly_part" },
             },
           },
           {
@@ -194,8 +195,29 @@ exports.verifyPayment = async (req, res) => {
     // THE PAYMENT IS LEGIT & VERIFIED
     if (req.body.CID === null) req.body.CID = "Not Registered";
 
+    // generating other like item fullfil and other
+    const extras = {
+      product_price : {},
+      discount_per_product : {},
+      product_parts : {},
+      items : {}
+    }
 
-    let data = order(req.body);
+    if(req.body.product.length > 0)
+    {
+      req.body.product.map((row)=>{
+        Object.assign(extras.product_price,{[row.SKU] : row.price})
+        Object.assign(extras.product_parts,{[row.SKU] : row.parts || 1})
+        Object.assign(extras.discount_per_product,{[row.SKU] : (parseInt(row.discount)/parseInt(row.price))*100})
+        Object.assign(extras.items,{[row.SKU] : []})
+      })
+    }
+    else {
+      return res.status(500).send({message : "error in simpleOrder APis product unavailable."})
+    }
+
+
+    let data = order({...req.body,...extras});
 
     const {
       customer_name
@@ -246,7 +268,31 @@ exports.simpleOrder = async (req, res) => {
     // THE PAYMENT IS LEGIT & VERIFIED
     if (req.body.CID === null) req.body.CID = "Not Registered";
 
-    let data = order(req.body);
+    const extras = {
+      product_price : {},
+      discount_per_product : {},
+      product_parts : {},
+      items : {}
+    }
+
+    if(req.body.product.length > 0)
+    {
+      req.body.product.map((row)=>{
+        Object.assign(extras.product_price,{[row.SKU] : row.price})
+        Object.assign(extras.product_parts,{[row.SKU] : row.parts || 1})
+        Object.assign(extras.discount_per_product,{[row.SKU] : (parseInt(row.discount)/parseInt(row.price))*100})
+        Object.assign(extras.items,{[row.SKU] : []})
+      })
+    }
+    else {
+      return res.status(500).send({message : "error in simpleOrder APis product unavailable."})
+    }
+
+    const products = req.body.product.map(row=>row.SKU)
+
+    let details = ""; 
+
+    let data = order({...req.body,...extras});
 
     const {
       customer_name
