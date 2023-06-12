@@ -98,13 +98,17 @@ exports.getDetails = async (req, res) => {
               product_title: { $first: "$product_title" },
               product_image: { $first: "$product_image" },
               featured_image: { $first: "$featured_image" },
-              product_description: { $first: "$product_description" },
-              MRP: { $first: "$selling_price" },
               selling_price: { $first: "$selling_price" },
               discount_limit: { $first: "$discount_limit" },
               SKU: { $first: "$SKU" },
               category_name: { $first: "$category_name" },
               assembly_part: { $first: "$assembly_part" },
+              length_main : {$first : "$length_main"},
+              breadth : {$first : "$breadth"},
+              height : {$first : "$height"},
+              polish_time : {$first : "$polish_time"},
+              manufacturing_time : {$first : "$manufacturing_time"},
+              primary_material : {$first : "$primary_material"},
             },
           },
           {
@@ -200,12 +204,14 @@ exports.verifyPayment = async (req, res) => {
       product_price : {},
       discount_per_product : {},
       product_parts : {},
+      quantity : {},
       items : {}
     }
 
     if(req.body.product.length > 0)
     {
       req.body.product.map((row)=>{
+        Object.assign(extras.quantity,{[row.SKU] : row.qty})
         Object.assign(extras.product_price,{[row.SKU] : row.price})
         Object.assign(extras.product_parts,{[row.SKU] : row.parts || 1})
         Object.assign(extras.discount_per_product,{[row.SKU] : (parseInt(row.discount)/parseInt(row.price))*100})
@@ -263,6 +269,7 @@ exports.verifyPayment = async (req, res) => {
   }
 };
 
+// this will use when no pre paid payment (online) needed for COD 
 exports.simpleOrder = async (req, res) => {
   try {
     // THE PAYMENT IS LEGIT & VERIFIED
@@ -270,6 +277,7 @@ exports.simpleOrder = async (req, res) => {
 
     const extras = {
       product_price : {},
+      quantity : {},
       discount_per_product : {},
       product_parts : {},
       items : {}
@@ -278,6 +286,8 @@ exports.simpleOrder = async (req, res) => {
     if(req.body.product.length > 0)
     {
       req.body.product.map((row)=>{
+
+        Object.assign(extras.quantity,{[row.SKU] : row.qty})
         Object.assign(extras.product_price,{[row.SKU] : row.price})
         Object.assign(extras.product_parts,{[row.SKU] : row.parts || 1})
         Object.assign(extras.discount_per_product,{[row.SKU] : (parseInt(row.discount)/parseInt(row.price))*100})

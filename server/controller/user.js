@@ -40,6 +40,7 @@ exports.register = async (req, res) => {
     .save(req.body)
     .then((response) => {
       return res.status(200).send({
+        status : 200,
         message: "Customer added successfully !!!",
         data: { email: response.email, password: req.body.repassword },
       });
@@ -47,7 +48,9 @@ exports.register = async (req, res) => {
     .catch((err) => {
       return res
         .status(406)
-        .send({ message: "Duplicate entries are not allowed !!!" });
+        .send({ 
+        status : 406,
+          message: "Duplicate entries are not allowed !!!" });
     });
 };
 
@@ -79,23 +82,34 @@ exports.login = async (req, res) => {
               //// console.log(data)
               //// console.log("User Found !!!", data);
               return res.send({
+                status : 200,
                 message: "Log In Successfully !!!",
-                token,
-                name: data.username,
-                email: data.email,
-                CID: data.CID,
+                data : {
+                  token,
+                  name: data.username,
+                  email: data.email,
+                  CID: data.CID,
+                }
               });
             } else
-              return res.status(203).send({ message: "User Not Found !!!" });
+              return res.status(203).send({ 
+        status : 203,
+                message: "User Not Found !!!" });
           }
         );
       } else {
-        return res.status(203).send({ message: "User Not Found !!!" });
+        return res.status(203).send({ 
+        status : 203,
+          message: "User Not Found !!!" });
       }
     })
     .catch((err) => {
-      console.log({ message: "User Not Found !!!", err });
-      return res.status(203).send({ message: "User Not Found !!!", err });
+      console.log({ 
+        status : 203,
+        message: "User Not Found !!!", err });
+      return res.status(203).send({ 
+        status : 203,
+        message: "User Not Found !!!", err });
     });
 };
 

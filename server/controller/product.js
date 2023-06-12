@@ -127,6 +127,7 @@ exports.getProducts = async (req, res) => {
     else return res.status(203).send([]);  
   }
   catch(error){
+    console.log(error)
      return res.status(500).send({ message: "Something went wrong !!!" });
   }
 };

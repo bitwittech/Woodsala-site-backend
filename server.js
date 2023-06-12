@@ -7,7 +7,7 @@ const path = require('path')
 const mongo = require('./database/dbConfig');
 const cors = require('cors')
 
-// midilwear to parse the body 
+// middleware to parse the body 
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(bodyParser.json());
 
@@ -30,13 +30,14 @@ app.use('/upload', express.static(path.join(__dirname, 'upload')));
 // app.use((req, res, next) => res.render('maintenance'));
 
 // requiring the routes
-app.use('/api/', require('./server/routes'))
+app.use('/api/', require('./server/routes/routes'))
+app.use('/app/', require('./server/routes/routes_app'))
 
-app.use(express.static("frontEnd/build"));
+app.use(express.static("frontend/build"));
 
 // for local only 
 // app.get("*", (req, res) => {
-//   res.sendFile(path.resolve(__dirname, 'frontEnd', 'build', 'index.html'))
+//   res.sendFile(path.resolve(__dirname, 'frontend', 'build', 'index.html'))
 // })
 
 
