@@ -1,5 +1,6 @@
 const categories = require("../../database/models/categories");
 const product = require("../../database/models/product");
+const catalog = require("../../database/models/catalog");
 const review = require("../../database/models/review");
 // const review = require("../../database/models/");
 
@@ -351,3 +352,41 @@ exports.listCategories = async (req,res)=>{
 
     }
 }
+
+
+exports.listCatalog = async (req, res) => {
+  try {
+    let filter = {};
+    let list = "";
+
+    // console.log(req.query.catalog_type)
+
+    if (req.query.catalog_type !== "" && req.query.catalog_type ) {
+    // console.log("sdfsdf",req.query.catalog_type)
+
+      filter = { catalog_type: req.query.catalog_type };
+      list = await catalog.find(filter).limit(10);
+    }
+    else{
+      list = await catalog.find(filter);
+    }
+
+    if (list) {
+      res.send({
+        status: 200,
+        message: "Catalog list fetched successfully.",
+        data : list
+      });
+    } else {
+      res.status(203).send({
+        status: 203,
+        message: "Error occurred in fetching the list.",
+        data : []
+
+      });
+    }
+  } catch (error) {
+    console.log(error);
+    res.sendStatus(500);
+  }
+};

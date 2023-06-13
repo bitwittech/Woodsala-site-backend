@@ -11,5 +11,6 @@ route.get("/getProductDetails",product.getProductDetails);
 route.get("/fetchVariants",product.fetchVariants);
 route.get("/getCategories",product.listCategories);
 route.get("/getBanner",utility.getBanner);
+route.get("/getCatalog",product.listCatalog);
 
 module.exports = route 
