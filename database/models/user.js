@@ -2,6 +2,7 @@ const { default: mongoose } = require("mongoose");
 
 const customer = mongoose.Schema({
   CID: { type: String, unique: true },
+  DID: { type: String, unique: true },
   register_time: { type: Date, default: Date.now },
   profile_image: { type: String },
   username: { type: String },

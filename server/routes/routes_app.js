@@ -23,13 +23,15 @@ route.get("/listMobileIntro",utility.listMobileIntro);
 route.get("/getCatalog",product.listCatalog);
 
 // set address 
-route.patch("/setAddress",AuthJwt,upload,user.setAddress)
+route.patch("/setAddress",upload,user.setAddress)
+route.get("/getAddress",user.getAddress)
 
 // cart
 
 route.post("/addToCart",upload,cart.addCartItem)
 route.delete("/removeCartItem",upload,cart.removeCartItem)
 route.get("/getCartItem",cart.getCartItem)
+route.get("/getCount",cart.getCount)
 
 // wishlist
 

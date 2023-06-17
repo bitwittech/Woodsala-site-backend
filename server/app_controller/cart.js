@@ -84,7 +84,7 @@ exports.removeCartItem = async (req, res) => {
       });
   } catch (err) {
     console.log(err);
-    return res.status(404).send({ message: "Something went wrong !!!" });
+    return res.status(500).send({ message: "Something went wrong !!!" });
   }
 };
 
@@ -107,64 +107,79 @@ exports.getCartItem = async (req, res) => {
         $lookup: {
           from: "new_products",
           localField: "product_id",
-          pipeline: [
-            {
-              $project: {
-                category_name: 1,
-                discount_limit: 1,
-                selling_price: 1,
-              },
-            },
-            {
-              $lookup: {
-                from: "categories",
-                localField: "category_name",
-                pipeline: [
-                  {
-                    $project: {
-                      category_name: 1,
-                      discount_limit: 1,
-                    },
-                  },
-                ],
-                foreignField: "category_name",
-                as: "category",
-              },
-            },
-          ],
+          // pipeline: [
+          //   {
+          //     $project: {
+          //       product_title: 1,
+          //       product_image: 1,
+          //       category_name: 1,
+          //       discount_limit: 1,
+          //       selling_price: 1,
+          //     },
+          //   },
+          //   {
+          //     $lookup: {
+          //       from: "categories",
+          //       localField: "category_name",
+          //       pipeline: [
+          //         {
+          //           $project: {
+          //             category_name: 1,
+          //             discount_limit: 1,
+          //           },
+          //         },
+          //       ],
+          //       foreignField: "category_name",
+          //       as: "category",
+          //     },
+          //   },
+          // ],
           foreignField: "SKU",
           as: "product",
         },
       },
     ]);
 
-    let subtotal = 0;
 
-    let total = data.reduce((sum,row )=>{
+    // let total = data.reduce((sum,row )=>{
+    //     if(row.product.length > 0)
+    //     {
+    //       if(row.product[0].category.length > 0)
+    //       {
+    //         subtotal+= row.product[0].selling_price
+    //         if(row.product[0].discount_limit > row.product[0].category[0].discount_limit)
+    //         {
+    //           return sum = sum + row.product[0].selling_price - row.product[0].selling_price/100*row.product[0].discount_limit
+    //         }
+    //         else{
+    //           return sum = sum + row.product[0].selling_price - row.product[0].selling_price/100*row.product[0].category[0].discount_limit   
+    //         }
+    //       }
+    //     }
+    // },0)
+    let subtotal = data.reduce((sum,row )=>{
         if(row.product.length > 0)
         {
-          if(row.product[0].category.length > 0)
-          {
-            subtotal+= row.product[0].selling_price
-            if(row.product[0].discount_limit > row.product[0].category[0].discount_limit)
-            {
-              return sum = sum + row.product[0].selling_price - row.product[0].selling_price/100*row.product[0].discount_limit
-            }
-            else{
-              return sum = sum + row.product[0].selling_price - row.product[0].selling_price/100*row.product[0].category[0].discount_limit   
-            }
-          }
+            return sum += row.product[0].selling_price * row.quantity
         }
     },0)
 
-    data = data.map(row=>{delete row.product; return row})
+    data = data.map(row=>{
+      row = {...row,
+        product_image : row.product[0].product_image,
+        product_title : row.product[0].product_title,
+        selling_price : row.product[0].selling_price*row.quantity
+      
+      }
+      delete row.product;
+       return row})
 
 
     if (data)
       return res.status(200).send({
         status: 200,
         message: "Cart items fetched successfully.",
-        data: { data, cartCount: data.length, subtotal,total },
+        data: { data, cartCount: data.length, subtotal },
       });
     else
       return res.status(203).send({
@@ -174,7 +189,7 @@ exports.getCartItem = async (req, res) => {
       });
   } catch (err) {
     console.log(err);
-    return res.status(404).send({ message: "Something went wrong !!!" });
+    return res.status(500).send({ message: "Something went wrong !!!" });
   }
 };
 
@@ -260,7 +275,7 @@ exports.removeWishlistItem = async (req, res) => {
       });
   } catch (err) {
     console.log(err);
-    return res.status(404).send({ message: "Something went wrong !!!" });
+    return res.status(500).send({ message: "Something went wrong !!!" });
   }
 };
 
@@ -274,7 +289,58 @@ exports.getWishlistItem = async (req, res) => {
         message: "Missing Payload",
       });
 
-    let data = await wishlist.find({ $or: [{ CID }, { DID }] }, { __v: 0 });
+      let data = await cart.aggregate([
+        { $match: { $or: [{ CID }, { DID }] } },
+        { $project: { __v: 0 } },
+        {
+          $lookup: {
+            from: "new_products",
+            localField: "product_id",
+            // pipeline: [
+            //   {
+            //     $project: {
+            //       product_title: 1,
+            //       product_image: 1,
+            //       category_name: 1,
+            //       discount_limit: 1,
+            //       selling_price: 1,
+            //     },
+            //   },
+            //   {
+            //     $lookup: {
+            //       from: "categories",
+            //       localField: "category_name",
+            //       pipeline: [
+            //         {
+            //           $project: {
+            //             category_name: 1,
+            //             discount_limit: 1,
+            //           },
+            //         },
+            //       ],
+            //       foreignField: "category_name",
+            //       as: "category",
+            //     },
+            //   },
+            // ],
+            foreignField: "SKU",
+            as: "product",
+          },
+        },
+      ]);
+  
+
+
+    data = data.map(row=>{
+      row = {...row,
+        product_image : row.product[0].product_image,
+        product_title : row.product[0].product_title,
+        selling_price : row.product[0].selling_price*row.quantity
+      
+      }
+      delete row.product;
+       return row})
+
 
     if (data)
       return res.status(200).send({
@@ -290,6 +356,40 @@ exports.getWishlistItem = async (req, res) => {
       });
   } catch (err) {
     console.log(err);
-    return res.status(404).send({ message: "Something went wrong !!!" });
+    return res.status(500).send({ message: "Something went wrong !!!" });
+  }
+};
+
+
+exports.getCount = async (req, res) => {
+  try {
+    const { CID, DID } = req.query;
+
+    if (!CID && !DID)
+      return res.status(203).send({
+        status: 203,
+        message: "Missing Payload",
+      });
+
+      let CartCount = await cart.find({$od : [{CID},{DID}]}).count()
+      let WishCount = await wishlist.find({$od : [{CID},{DID}]}).count()
+    
+
+    if (CartCount
+      && WishCount)
+      return res.status(200).send({
+        status: 200,
+        message: "Wishlist items fetched successfully.",
+        data: { WishCount ,CartCount },
+      });
+    else
+      return res.status(203).send({
+        status: 203,
+        message: "No product found",
+        data: { WishCount ,CartCount },
+      });
+  } catch (err) {
+    console.log(err);
+    return res.status(500).send({ message: "Something went wrong !!!" });
   }
 };

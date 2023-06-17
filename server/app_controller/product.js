@@ -100,6 +100,7 @@ exports.getProduct = async (req, res) => {
             {
               $project: {
                 discount_limit: 1,
+                category_banner: 1,
                 _id: 0,
               },
             },
