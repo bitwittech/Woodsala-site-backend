@@ -173,14 +173,11 @@ exports.getProductDetails = async (req, res) => {
           breadth: { $first: "$breadth" },
           primary_material: { $first: "$primary_material" },
           polish: { $first: "$polish" },
-          fabric: { $first: "$fabric" },
-          // amazon_url: { $first: "$amazon_url" },
-          // flipkart_url: { $first: "$flipkart_url" },
-          // jiomart_url: { $first: "$jiomart_url" },
+          // fabric: { $first: "$fabric" },
           polish_time: { $first: "$polish_time" },
           manufacturing_time: { $first: "$manufacturing_time" },
-          fitting: { $first: "$fitting" },
-          fitting_name: { $first: "$fitting_name" },
+          // fitting: { $first: "$fitting" },
+          // fitting_name: { $first: "$fitting_name" },
         },
       },
       {
@@ -206,6 +203,7 @@ exports.getProductDetails = async (req, res) => {
           pipeline: [
             {
               $project: {
+                SKU: 1,
                 product_title: 1,
                 _id: 1,
               },
@@ -215,9 +213,29 @@ exports.getProductDetails = async (req, res) => {
           as: "variants",
         },
       },
+      {
+        $lookup: {
+          from: "reviews",
+          localField: "SKU",
+          pipeline: [
+            {
+              $project: {
+                product_id: 1,
+                product_title: 1,
+                rating : 1,
+                review_title : 1,
+                review : 1,
+                reviewer_name : 1,
+                _id: 1,
+              },
+            },
+          ],
+          foreignField: "product_id",
+          as: "reviews",
+        },
+      },
     ]);
 
-    console.log(productDetail);
 
     // sum of discount limit
     if (productDetail[0].categories[0]) {
@@ -231,53 +249,19 @@ exports.getProductDetails = async (req, res) => {
       delete productDetail[0].categories;
     }
 
-    // fetching data of all review for CT section in product page
-    let allReviews = await review.aggregate([
-      { $match: {} },
-      {
-        $group: {
-          _id: "$_id",
-          product_id: { $first: "$product_id" },
-          rating: { $first: "$rating" },
-          review_title: { $first: "$review_title" },
-          review: { $first: "$review" },
-          reviewer_name: { $first: "$reviewer_name" },
-        },
-      },
-      {
-        $lookup: {
-          from: "new_products",
-          localField: "product_id",
-          foreignField: "SKU",
-          pipeline: [
-            {
-              $group: {
-                _id: "$_id",
-                product_title: { $first: "$product_title" },
-                product_image: { $first: "$product_image" },
-                category_name: { $first: "$category_name" },
-              },
-            },
-          ],
-          as: "product",
-        },
-      },
-      { $limit: 12 },
-    ]);
+ 
 
-    if (productDetail && allReviews)
+    if (productDetail)
       return res.send({
         status: 200,
         message: ` ${req.query.SKU} Product details fetched successfully.`,
         data: productDetail[0],
-        reviews: allReviews || [],
       });
     else
       return res.send({
         status: 200,
         message: `No details found for ${req.query.SKU} `,
         data: [],
-        reviews: [],
       });
   } catch (err) {
     console.log("ERROR>>> ", err);
@@ -329,11 +313,14 @@ exports.fetchVariants = async (req, res) => {
 
 exports.listCategories = async (req,res)=>{
     try{
+      
+      let {limit} = req.query
+
         let list = await categories.find({},{
           category_name : 1,
-          category_status : 1,
           category_image : 1,
-        })
+          category_banner : 1,
+        }).limit(limit || 8)
         if(list)
         res.send({
           status : 200,

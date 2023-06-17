@@ -1,9 +1,10 @@
 const { default: mongoose } = require("mongoose");
 
 const wishlist = mongoose.Schema({
-    CID: { type: String },
-    product_id: { type: String },
-    quantity: { type: Number }
-})
+  CID: { type: String, default: "" },
+  product_id: { type: String },
+  quantity: { type: Number },
+  DID: { type: String, default: "" },
+});
 
-module.exports = mongoose.model('wishlist', wishlist);
+module.exports = mongoose.model("wishlist", wishlist);

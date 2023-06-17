@@ -4,7 +4,7 @@ const bcrypt = require("bcrypt");
 const JWT = require("jsonwebtoken");
 const { v4: uuidv4 } = require("uuid");
 const nodemailer = require("nodemailer");
-const sdk = require('api')('@servetel/v1.0#14z732fkuc911ee');
+const sdk = require("api")("@servetel/v1.0#14z732fkuc911ee");
 
 // DB modules
 const userDB = require("../../database/models/user");
@@ -40,17 +40,16 @@ exports.register = async (req, res) => {
     .save(req.body)
     .then((response) => {
       return res.status(200).send({
-        status : 200,
+        status: 200,
         message: "Customer added successfully !!!",
         data: { email: response.email, password: req.body.repassword },
       });
     })
     .catch((err) => {
-      return res
-        .status(406)
-        .send({ 
-        status : 406,
-          message: "Duplicate entries are not allowed !!!" });
+      return res.status(406).send({
+        status: 406,
+        message: "Duplicate entries are not allowed !!!",
+      });
     });
 };
 
@@ -82,34 +81,40 @@ exports.login = async (req, res) => {
               //// console.log(data)
               //// console.log("User Found !!!", data);
               return res.send({
-                status : 200,
+                status: 200,
                 message: "Log In Successfully !!!",
-                data : {
+                data: {
                   token,
                   name: data.username,
                   email: data.email,
                   CID: data.CID,
-                }
+                },
               });
             } else
-              return res.status(203).send({ 
-        status : 203,
-                message: "User Not Found !!!" });
+              return res.status(203).send({
+                status: 203,
+                message: "User Not Found !!!",
+              });
           }
         );
       } else {
-        return res.status(203).send({ 
-        status : 203,
-          message: "User Not Found !!!" });
+        return res.status(203).send({
+          status: 203,
+          message: "User Not Found !!!",
+        });
       }
     })
     .catch((err) => {
-      console.log({ 
-        status : 203,
-        message: "User Not Found !!!", err });
-      return res.status(203).send({ 
-        status : 203,
-        message: "User Not Found !!!", err });
+      console.log({
+        status: 203,
+        message: "User Not Found !!!",
+        err,
+      });
+      return res.status(203).send({
+        status: 203,
+        message: "User Not Found !!!",
+        err,
+      });
     });
 };
 
@@ -129,8 +134,8 @@ exports.getCustomer = async (req, res) => {
 
 // get customer's addresses
 exports.getCustomerAddress = async (req, res) => {
-  userDB
-    .findOne(
+  try {
+    let data = await userDB.findOne(
       { CID: req.query.CID },
       {
         CID: 0,
@@ -142,15 +147,24 @@ exports.getCustomerAddress = async (req, res) => {
         password: 0,
         shipping: 0,
       }
-    )
-    .then((data) => {
-      //// console.log(data)
-      return res.status(200).send(data);
-    })
-    .catch((err) => {
-      console.log(err);
-      return res.status(404).send(err);
-    });
+    );
+
+    if (data)
+      return res.send({
+        status: 200,
+        message: "Customer details fetched successfully.",
+        data,
+      });
+    else
+      return res.status(203).send({
+        status: 203,
+        message: "No customer found.",
+        data : []
+      });
+  } catch (error) {
+    console.log(err);
+    return res.status(404).send(err);
+  }
 };
 
 // update Customer
@@ -207,52 +221,46 @@ exports.verify = async (req, res) => {
   });
 };
 
-exports.captcha =async(req,res)=>{
+exports.captcha = async (req, res) => {
+  try {
+    let { response, key } = JSON.parse(req.query.response);
 
-  try{
-    let {response,key} = JSON.parse(req.query.response)
- 
-
-    request(verificationURL,function(error,response,body) {
+    request(verificationURL, function (error, response, body) {
       body = JSON.parse(body);
-   
-      if(body.success !== undefined && !body.success) {
-        return res.json({"responseError" : "Failed captcha verification"});
+
+      if (body.success !== undefined && !body.success) {
+        return res.json({ responseError: "Failed captcha verification" });
       }
-      res.json({"responseSuccess" : "Sucess"});
+      res.json({ responseSuccess: "Sucess" });
     });
-  }catch(err){
-    console.log(err)
-    return res.sendStatus(500)
+  } catch (err) {
+    console.log(err);
+    return res.sendStatus(500);
   }
+};
 
-}
+exports.masterCheckIn = async (req, res) => {
+  try {
+    let { email, password } = req.body;
 
-exports.masterCheckIn =async(req,res)=>{
+    if (!email || !password)
+      res.status(203).send("Please provide Credential !!!");
 
-  try{ 
+    let user = { master: "master@woodhshala.com", password: "master@2023" };
 
-    let {email,password} = req.body
+    if (user.master === email && user.password === user.password) {
+      let masterToken = generateJWT({ email, password });
 
-    if(!email || !password) res.status(203).send("Please provide Credential !!!")
-
-    let user = {master : 'master@woodhshala.com', password : "master@2023"}
-    
-    if(user.master === email && user.password === user.password )
-    {
-      let masterToken = generateJWT({email,password});
-
-      return res.send({message : "Welcome Master",masterToken : masterToken})
+      return res.send({ message: "Welcome Master", masterToken: masterToken });
+    } else {
+      return res
+        .status(403)
+        .send({ message: "You are not allowed to access it." });
     }
-    else{
-      return res.status(403).send({message : "You are not allowed to access it."})
-    }
-  
-  }catch(err){
-    console.log(err)
-    return res.sendStatus(500)
+  } catch (err) {
+    console.log(err);
+    return res.sendStatus(500);
   }
-
-}
+};
 
 // ================================================= Apis for User Ends =======================================================
