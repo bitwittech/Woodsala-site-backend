@@ -27,11 +27,14 @@ route.patch("/setAddress",upload,user.setAddress)
 route.get("/getAddress",user.getAddress)
 
 // cart
-
 route.post("/addToCart",upload,cart.addCartItem)
 route.delete("/removeCartItem",upload,cart.removeCartItem)
 route.get("/getCartItem",cart.getCartItem)
 route.get("/getCount",cart.getCount)
+route.get("/calculate",cart.calculate)
+
+// coupon
+route.get("/getPromoCode",cart.getPromoCode)
 
 // wishlist
 
@@ -40,6 +43,6 @@ route.delete("/removeWishlistItem",upload,cart.removeWishlistItem)
 route.get("/getWishlistItem",cart.getWishlistItem)
 
 // checkout 
-route.get("/calculate",utility.calculate)
+route.get("/calculate",cart.calculate)
 
 module.exports = route 

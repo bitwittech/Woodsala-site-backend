@@ -4,7 +4,7 @@ const categories = mongoose.Schema({
     category_name: { required: true, type: String, unique: true },
     category_status: { required: true, type: Boolean },
     category_banner: {  type: String, default : "" },
-    category_image: { type: String },
+    category_image: { type: String, default : "" },
     discount_limit: { type: Number, default: 0 },
     seo_title: { type: String, default: '' },
     seo_description: { type: String, default: '' },
