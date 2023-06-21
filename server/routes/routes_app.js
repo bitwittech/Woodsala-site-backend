@@ -3,6 +3,9 @@ const product = require("../app_controller/product");
 const user = require("../app_controller/user");
 const cart = require("../app_controller/cart");
 const utility = require("../app_controller/utility");
+const checkout = require("../app_controller/checkout");
+
+// middleware
 const { AuthJwt } = require("../middleware/auth");
 const { upload } = require("../middleware/url_encode");
 
@@ -44,5 +47,8 @@ route.get("/getWishlistItem",cart.getWishlistItem)
 
 // checkout 
 route.get("/calculate",cart.calculate)
+
+// order
+route.get("/getOrder",checkout.getOrders)
 
 module.exports = route 

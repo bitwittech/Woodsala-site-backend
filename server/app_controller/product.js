@@ -223,10 +223,10 @@ exports.getProductDetails = async (req, res) => {
               $project: {
                 product_id: 1,
                 product_title: 1,
-                rating : 1,
-                review_title : 1,
-                review : 1,
-                reviewer_name : 1,
+                rating: 1,
+                review_title: 1,
+                review: 1,
+                reviewer_name: 1,
                 _id: 1,
               },
             },
@@ -236,7 +236,6 @@ exports.getProductDetails = async (req, res) => {
         },
       },
     ]);
-
 
     // sum of discount limit
     if (productDetail[0].categories[0]) {
@@ -249,8 +248,6 @@ exports.getProductDetails = async (req, res) => {
 
       delete productDetail[0].categories;
     }
-
- 
 
     if (productDetail)
       return res.send({
@@ -297,14 +294,12 @@ exports.fetchVariants = async (req, res) => {
         show: true,
       });
     } else {
-      res
-        .status(203)
-        .send({
-          status: 203,
-          message: "No variants found.",
-          variants: [],
-          show: false,
-        });
+      res.status(203).send({
+        status: 203,
+        message: "No variants found.",
+        variants: [],
+        show: false,
+      });
     }
   } catch (err) {
     console.log("ERROR>>> ", err);
@@ -312,65 +307,86 @@ exports.fetchVariants = async (req, res) => {
   }
 };
 
-exports.listCategories = async (req,res)=>{
-    try{
-      
-      let {limit} = req.query
+exports.listCategories = async (req, res) => {
+  try {
+    let { limit } = req.query;
 
-        let list = await categories.find({},{
-          category_name : 1,
-          category_image : 1,
-          category_banner : 1,
-        }).limit(limit || 8)
-        if(list)
-        res.send({
-          status : 200,
-          message : "Category list fetched successfully.",
-          data : list,
-        })
-        else
-        res.send({
-          status : 200,
-          message : "Category list fetched successfully.",
-          data : [],
-        })
-    }catch(err){
-      console.log(err)
-      res.status(500).send({message : "Something went wrong !!!",err})
-
-    }
-}
-
+    let list = await categories
+      .find(
+        {},
+        {
+          category_name: 1,
+          category_image: 1,
+          category_banner: 1,
+        }
+      )
+      .limit(limit || 8);
+    if (list)
+      res.send({
+        status: 200,
+        message: "Category list fetched successfully.",
+        data: list,
+      });
+    else
+      res.send({
+        status: 200,
+        message: "Category list fetched successfully.",
+        data: [],
+      });
+  } catch (err) {
+    console.log(err);
+    res.status(500).send({ message: "Something went wrong !!!", err });
+  }
+};
 
 exports.listCatalog = async (req, res) => {
   try {
-    let filter = {};
+    let { catalog_type, limit } = req.query;
     let list = "";
 
-    // console.log(req.query.catalog_type)
+    if (catalog_type) filter = { catalog_type: req.query.catalog_type };
 
-    if (req.query.catalog_type !== "" && req.query.catalog_type ) {
-    // console.log("sdfsdf",req.query.catalog_type)
-
-      filter = { catalog_type: req.query.catalog_type };
-      list = await catalog.find(filter).limit(10);
-    }
-    else{
-      list = await catalog.find(filter);
-    }
+    // list = await catalog.find(filter).limit(10);
+    list = await catalog.aggregate([
+      { $match: { catalog_type } },
+      {
+        $project: {
+          __v: 0,
+        },
+      },
+      {
+        $lookup: {
+          from: "new_products",
+          localField: "SKU",
+          pipeline: [
+            {
+              $project: {
+                product_image: 1,
+                selling_price: 1,
+                _id: 0,
+              },
+            },
+          ],
+          foreignField: "SKU",
+          as: "product",
+        },
+      },
+      {
+        $limit : parseInt(limit) || 10
+      }
+    ]);
 
     if (list) {
       res.send({
         status: 200,
         message: "Catalog list fetched successfully.",
-        data : list
+        data: list,
       });
     } else {
       res.status(203).send({
         status: 203,
         message: "Error occurred in fetching the list.",
-        data : []
-
+        data: [],
       });
     }
   } catch (error) {
