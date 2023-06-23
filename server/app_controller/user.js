@@ -36,6 +36,8 @@ exports.setAddress = async (req, res) => {
     if (CID) check = await user.findOne({ CID }, { address: 1 });
     else check = await user.findOne({ DID }, { address: 1 });
 
+    // console.log(check)
+
     if (!check && CID)
       return res
         .status(203)
@@ -62,6 +64,16 @@ exports.setAddress = async (req, res) => {
       );
     else {
       if (!check)
+        {check = await user.find({$or:[{email},{mobile}]}).count()
+        
+        if(check > 0) return res.status(203).send(
+          {
+            status : 203,
+            message : "Sorry email or mobile already exist.",
+            data : []
+          }
+        )
+
         check = await user.findOneAndUpdate(
           { DID },
           {
@@ -84,8 +96,9 @@ exports.setAddress = async (req, res) => {
             ],
           },
           { upsert: true, new: true }
-        );
+        );}
       else
+      {
         check = await user.findOneAndUpdate(
           { DID },
           {
@@ -104,9 +117,9 @@ exports.setAddress = async (req, res) => {
             ],
           },
           { upsert: true, new: true }
-        );
+          );
+        }
     }
-
     if (check)
       return res
         .status(200)

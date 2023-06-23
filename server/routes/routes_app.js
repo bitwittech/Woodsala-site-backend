@@ -42,7 +42,7 @@ route.get("/getPromoCode",cart.getPromoCode)
 // wishlist
 
 route.post("/addToWishlist",upload,cart.addWishlistItem)
-route.delete("/removeWishlistItem",upload,cart.removeWishlistItem)
+route.delete("/removeWishlistItem",cart.removeWishlistItem)
 route.get("/getWishlistItem",cart.getWishlistItem)
 
 // checkout 

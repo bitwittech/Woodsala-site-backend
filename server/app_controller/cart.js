@@ -59,7 +59,7 @@ exports.removeCartItem = async (req, res) => {
   try {
     const { CID, DID, product_id } = req.query;
 
-    console.log(CID, DID);
+    // console.log(CID, DID);
     if ((!CID && !DID) || !product_id)
       return res.status(203).send({
         status: 203,
@@ -67,9 +67,12 @@ exports.removeCartItem = async (req, res) => {
       });
 
     let response = await cart.deleteMany({
-      $and: [{ $or: [{ CID, DID }] }, { product_id: req.query.product_id }],
+      $and: [{ $or: [{CID}, {DID} ] }, { product_id: product_id }],
     });
-    let cartCount = await cart.find({ $or: [{ CID, DID }] }).count();
+    let cartCount = await cart
+    .find({ $and: [{ $or: [{ CID }, { DID }] }] })
+    .count();
+
 
     if (response.deletedCount > 0)
       return res.status(200).send({
@@ -256,9 +259,9 @@ exports.removeWishlistItem = async (req, res) => {
       });
 
     let response = await wishlist.deleteMany({
-      $and: [{ $or: [{ CID, DID }] }, { product_id: req.query.product_id }],
+      $and: [{ $or: [{CID}, {DID}] }, { product_id: req.query.product_id }],
     });
-    let wishlistCount = await wishlist.find({ $or: [{ CID, DID }] }).count();
+    let wishlistCount = await wishlist.find({ $or: [{CID}, {DID}] }).count();
 
     if (response.deletedCount > 0)
       return res.status(200).send({
