@@ -372,8 +372,8 @@ exports.listCatalog = async (req, res) => {
         },
       },
       {
-        $limit : parseInt(limit) || 10
-      }
+        $limit: parseInt(limit) || 10,
+      },
     ]);
 
     if (list) {
@@ -392,5 +392,70 @@ exports.listCatalog = async (req, res) => {
   } catch (error) {
     console.log(error);
     res.sendStatus(500);
+  }
+};
+
+// for getting related product
+exports.getRelatedProduct = async (req, res) => {
+  try {
+    let { category_name, product_title, limit } = req.query;
+
+    if(!category_name && !product_title) 
+    return res.status(203).send({
+      status : 203,
+      message : "Missing Payload !!!",
+      data : []
+    })
+
+    console.log(
+      String(category_name),String(product_title)
+    )
+
+    // for proceeding the filter if there is wrong json formate
+    let data = await product.aggregate([
+      {
+        $match: {
+          $or: [
+            { category_name: { $regex: String(category_name) ,$options: "i" } },
+            { product_title: { $regex: String(product_title) ,$options: "i" } },
+          ],
+        },
+      },
+      {
+        $group: {
+          _id: "$_id",
+          product_title: { $first: "$product_title" },
+          product_image: { $first: "$product_image" },
+          featured_image: { $first: "$featured_image" },
+          product_description: { $first: "$product_description" },
+          selling_price: { $first: "$selling_price" },
+          SKU: { $first: "$SKU" },
+          category_name: { $first: "$category_name" },
+        },
+      },
+      { $limit: parseInt(limit) || 8 },
+    ]);
+
+    if(data)
+      return res.status(200).send({
+        status : 200,
+        message : "Related product list fetched successfully.",
+        data
+      })
+    else
+    return res.status(203).send({
+      status : 203,
+      message : "No Related products found.",
+      data : []
+    }) 
+
+
+  } catch (err) {
+    console.log(err)
+    return res.status(500).send({
+      status : 500,
+      message : "Something went wrong !!!",
+      data : []
+    }) 
   }
 };

@@ -17,6 +17,7 @@ route.get("/getProducts",product.getProduct);
 route.get("/getProductDetails",product.getProductDetails);
 route.get("/fetchVariants",product.fetchVariants);
 route.get("/getCategories",product.listCategories);
+route.get("/getRelatedProduct",product.getRelatedProduct);
 
 // banner
 route.get("/getBanner",utility.getBanner);
@@ -50,5 +51,8 @@ route.get("/calculate",cart.calculate)
 
 // order
 route.get("/getOrder",checkout.getOrders)
+
+// user 
+route.get("/getUserDetails",user.getCustomerDetails)
 
 module.exports = route 

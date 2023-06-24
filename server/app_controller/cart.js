@@ -291,7 +291,7 @@ exports.getWishlistItem = async (req, res) => {
         message: "Missing Payload",
       });
 
-    let data = await cart.aggregate([
+    let data = await wishlist.aggregate([
       { $match: { $or: [{ CID }, { DID }] } },
       { $project: { __v: 0 } },
       {
