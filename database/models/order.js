@@ -3,7 +3,7 @@ const { default: mongoose } = require("mongoose");
 const order = mongoose.Schema({
   O: { type: String, default : "" },
   order_time: { type: Date, default: Date.now },
-  status: { type: String, default : "" },
+  status: { type: String, default : "Processing" },
   CID: { type: String, default : "" },
   DID: { type: String, default : "" },
   customer_name: { type: String, default : "" },
@@ -45,6 +45,9 @@ const order = mongoose.Schema({
   AWB : {type : String, default : ''},
   apartment : {type : String, default : ''},
   landmark : {type : String, default : ''},
+  payment_status : {type : Boolean, default : false},
+  coupon_code: {type : String, default : ""},
+
 },{
   timestamps : true
 });
