@@ -20,20 +20,20 @@ exports.addCartItem = async (req, res) => {
         message: "Please provide the proper payload missing.",
       });
 
+    let query = {};
+
+    if (CID) query = { CID: String(CID) };
+    else query = { DID: String(DID) };
+
     let data = await cart.findOneAndUpdate(
       {
-        $and: [
-          { $or: [{ CID }, { DID }] },
-          { product_id: req.body.product_id },
-        ],
+        $and: [query, { product_id: req.body.product_id }],
       },
       { CID, product_id, quantity, DID },
       { upsert: true, new: true }
     );
 
-    let cartCount = await cart
-      .find({ $and: [{ $or: [{ CID }, { DID }] }] })
-      .count();
+    let cartCount = await cart.find({ query }).count();
 
     if (data)
       return res.status(200).send({
@@ -68,12 +68,15 @@ exports.removeCartItem = async (req, res) => {
         message: "Missing Payload",
       });
 
+    let query = {};
+
+    if (CID) query = { CID: String(CID) };
+    else query = { DID: String(DID) };
+
     let response = await cart.deleteMany({
-      $and: [{ $or: [{ CID }, { DID }] }, { product_id: product_id }],
+      $and: [query, { product_id: product_id }],
     });
-    let cartCount = await cart
-      .find({ $and: [{ $or: [{ CID }, { DID }] }] })
-      .count();
+    let cartCount = await cart.find({ query }).count();
 
     if (response.deletedCount > 0)
       return res.status(200).send({
@@ -103,42 +106,18 @@ exports.getCartItem = async (req, res) => {
         message: "Missing Payload",
       });
 
-    // ,
+    let query = {};
+
+    if (CID) query = { CID: String(CID) };
+    else query = { DID: String(DID) };
 
     let data = await cart.aggregate([
-      { $match: { $or: [{ CID }, { DID }] } },
+      { $match: query },
       { $project: { __v: 0 } },
       {
         $lookup: {
           from: "new_products",
           localField: "product_id",
-          // pipeline: [
-          //   {
-          //     $project: {
-          //       product_title: 1,
-          //       product_image: 1,
-          //       category_name: 1,
-          //       discount_limit: 1,
-          //       selling_price: 1,
-          //     },
-          //   },
-          //   {
-          //     $lookup: {
-          //       from: "categories",
-          //       localField: "category_name",
-          //       pipeline: [
-          //         {
-          //           $project: {
-          //             category_name: 1,
-          //             discount_limit: 1,
-          //           },
-          //         },
-          //       ],
-          //       foreignField: "category_name",
-          //       as: "category",
-          //     },
-          //   },
-          // ],
           foreignField: "SKU",
           as: "product",
         },
@@ -211,20 +190,20 @@ exports.addWishlistItem = async (req, res) => {
         message: "Please provide the proper payload missing.",
       });
 
+    let query = {};
+
+    if (CID) query = { CID: String(CID) };
+    else query = { DID: String(DID) };
+
     let data = await wishlist.findOneAndUpdate(
       {
-        $and: [
-          { $or: [{ CID }, { DID }] },
-          { product_id: req.body.product_id },
-        ],
+        $and: [query, { product_id: req.body.product_id }],
       },
       { CID, product_id, quantity, DID },
       { upsert: true, new: true }
     );
 
-    let wishListCount = await wishlist
-      .find({ $and: [{ $or: [{ CID }, { DID }] }] })
-      .count();
+    let wishListCount = await wishlist.find(query).count();
 
     if (data)
       return res.status(200).send({
@@ -259,12 +238,15 @@ exports.removeWishlistItem = async (req, res) => {
         message: "Missing Payload",
       });
 
+    let query = {};
+
+    if (CID) query = { CID: String(CID) };
+    else query = { DID: String(DID) };
+
     let response = await wishlist.deleteMany({
-      $and: [{ $or: [{ CID }, { DID }] }, { product_id: req.query.product_id }],
+      $and: [query, { product_id: req.query.product_id }],
     });
-    let wishlistCount = await wishlist
-      .find({ $or: [{ CID }, { DID }] })
-      .count();
+    let wishlistCount = await wishlist.find(query).count();
 
     if (response.deletedCount > 0)
       return res.status(200).send({
@@ -294,8 +276,13 @@ exports.getWishlistItem = async (req, res) => {
         message: "Missing Payload",
       });
 
+    let query = {};
+
+    if (CID) query = { CID: String(CID) };
+    else query = { DID: String(DID) };
+
     let data = await wishlist.aggregate([
-      { $match: { $or: [{ CID }, { DID }] } },
+      { $match: query },
       { $project: { __v: 0 } },
       {
         $lookup: {
@@ -373,8 +360,13 @@ exports.getCount = async (req, res) => {
         message: "Missing Payload",
       });
 
-    let CartCount = await cart.find({ $or: [{ CID }, { DID }] }).count();
-    let WishCount = await wishlist.find({ $or: [{ CID }, { DID }] }).count();
+    let query = {};
+
+    if (CID) query = { CID: String(CID) };
+    else query = { DID: String(DID) };
+
+    let CartCount = await cart.find(query).count();
+    let WishCount = await wishlist.find(query).count();
 
     if (CartCount && WishCount)
       return res.status(200).send({
@@ -433,7 +425,7 @@ exports.getPromoCode = async (req, res) => {
 // Calculate Start =================================
 exports.calculate = async (req, res) => {
   try {
-    const { CID, DID, order_id, address_id, promo_id } = req.query;
+    const { CID, DID, order_id, address_id, promo_id } = req.body;
 
     if ((!CID && !DID) || !address_id)
       return res.status(203).send({
@@ -441,9 +433,14 @@ exports.calculate = async (req, res) => {
         message: "Missing Payload",
       });
 
+    let query = {};
+
+    if (CID) query = { CID: String(CID) };
+    else query = { DID: String(DID) };
+
     // fetching the Cart Items
     let items = await cart.aggregate([
-      { $match: { $or: [{ CID }, { DID }] } },
+      { $match: query },
       { $project: { __v: 0, _id: 0 } },
       {
         $lookup: {
@@ -548,7 +545,22 @@ exports.calculate = async (req, res) => {
     // for order create and update order
     if (!order_id)
       order_data = await CreateOrder(CID, DID, items, promo_id, address_id);
-    else
+    else {
+      //check the CID or DID really has that order or not
+      // console.log(CID)
+      let count = await order
+        .find({
+          $and: [query, { O: order_id }, { payment_status: 0 }],
+        })
+        .count();
+      // console.log(count)
+      if (count === 0)
+        return res.status(203).send({
+          status: 203,
+          message: `Order ${order_id} is not belongs to the respective CID or DID`,
+          data: {},
+        });
+
       order_data = await UpdateOrder(
         CID,
         DID,
@@ -557,7 +569,7 @@ exports.calculate = async (req, res) => {
         address_id,
         order_id
       );
-
+    }
     if (order_data.status === 200) {
       items = order_data.items;
       order_data = await order.findOneAndUpdate(
@@ -628,10 +640,12 @@ async function CreateOrder(CID, DID, items, promo_id, address_id) {
   try {
     let O = await GetOrderID();
 
-    let customer_address = await user.findOne(
-      { $or: [{ CID }, { DID }] },
-      { address: 1 }
-    );
+    let query = {};
+
+    if (CID) query = { CID: String(CID) };
+    else query = { DID: String(DID) };
+
+    let customer_address = await user.findOne(query, { address: 1 });
     let promoData;
 
     // check for promo code applied or not?
@@ -734,12 +748,13 @@ async function CreateOrder(CID, DID, items, promo_id, address_id) {
 
 async function UpdateOrder(CID, DID, items, promo_id, address_id, order_id) {
   try {
-    let customer_address = await user.findOne(
-      { $or: [{ CID }, { DID }] },
-      { address: 1 }
-    );
-    let promoData;
+    let query = {};
 
+    if (CID) query = { CID: String(CID) };
+    else query = { DID: String(DID) };
+
+    let customer_address = await user.findOne(query, { address: 1 });
+    let promoData;
     // check for promo code applied or not?
     if (promo_id)
       promoData = await coupon.findOne(
@@ -850,23 +865,29 @@ exports.CODCheckOut = async (req, res) => {
         data: {},
       });
 
+    let query = {};
+
+    if (CID) query = { CID: String(CID) };
+    else query = { DID: String(DID) };
+
     // fetching the order details
     let order_data = await order.findOne(
-      { $and: [{ O: order_id }, {$or: [{CID}, {DID}]}, {payment_status : false}] },
+      {
+        $and: [{ O: order_id }, query, { payment_status: false }],
+      },
       { O: 1, total: 1, subTotal: 1, coupon_code: 1, discount: 1 }
     );
 
-    
     if (!order_data)
-    return res.status(203).send({
-      status: 203,
-      message: "Order not found !!!",
-      data: {},
-    });
+      return res.status(203).send({
+        status: 203,
+        message: "Order not found !!!",
+        data: {},
+      });
     let { O, total, subTotal, coupon_code, discount } = order_data;
-    
+
     order_data = await order.findOneAndUpdate(
-      { $and: [{ O: order_id}, {$or: [{CID}, {DID}] }] },
+      { $and: [{ O: order_id }, query] },
       {
         pay_method_remaining: "COD",
         pay_method_advance: "COD",
@@ -898,7 +919,7 @@ exports.CODCheckOut = async (req, res) => {
         },
       });
   } catch (error) {
-    console.log(error)
+    console.log(error);
 
     return res.status(500).send({
       status: 500,
@@ -906,4 +927,4 @@ exports.CODCheckOut = async (req, res) => {
       data: {},
     });
   }
-}
+};

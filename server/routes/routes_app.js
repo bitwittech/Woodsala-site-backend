@@ -47,7 +47,7 @@ route.delete("/removeWishlistItem",cart.removeWishlistItem)
 route.get("/getWishlistItem",cart.getWishlistItem)
 
 // checkout 
-route.get("/calculate",cart.calculate)
+route.post("/calculate",upload,cart.calculate)
 route.post("/checkoutCOD",upload,cart.CODCheckOut)
 
 // order

@@ -33,24 +33,46 @@ exports.home = (req, res) => {
 // place an customer
 
 exports.register = async (req, res) => {
-  req.body.CID = `CID-${uuidv4()}`;
-  // console.log(req.body);
-  const data = userDB(req.body);
-  await data
-    .save(req.body)
-    .then((response) => {
+  try {
+    let { email, mobile, password } = req.body;
+
+    if (!email || !mobile || !password)
+      return res.status(203).send({
+        status: 203,
+        message: "Missing payload !!!",
+      });
+
+    // check for the duplicate entries
+    let count = await userDB.find({$or : [{email},{mobile},{password}]}).count()
+
+    if(count > 0)
+    return res.status(203).send({
+      status : 203,
+      message : "Duplicate entry detected !!!"
+    })
+    let data = userDB({ ...req.body, CID: `CID-${uuidv4()}` });
+
+    let response = await data.save(req.body);
+
+    if (response)
       return res.status(200).send({
         status: 200,
-        message: "Customer added successfully !!!",
+        message: "Customer registered successfully.",
         data: { email: response.email, password: req.body.repassword },
       });
-    })
-    .catch((err) => {
-      return res.status(406).send({
-        status: 406,
-        message: "Duplicate entries are not allowed !!!",
+    else
+      return res.status(200).send({
+        status: 200,
+        message: "Facing an issue while adding the customer.",
+        data: {},
       });
+  } catch (error) {
+    console.log(error)
+    return res.status(500).send({
+      status: 500,
+      message: "Something went wrong !!!",
     });
+  }
 };
 
 // function for generate JWT
@@ -62,61 +84,62 @@ function generateJWT(data) {
 
 // login
 exports.login = async (req, res) => {
-  // console.log(req.body)
-  if (req.body.email === undefined || req.body.password === undefined)
-    return res.status(203).send("Please provides the valid data");
+  try {
+    console.log(req.body)
 
-  userDB
-    .findOne({ email: req.body.email })
-    .then((data) => {
-      // console.log(data)
-      if (data != null) {
-        bcrypt.compare(
-          req.body.password,
-          data.password,
-          function (err, result) {
-            //// console.log(err,result)
-            if (result === true) {
-              let token = generateJWT(req.body);
-              //// console.log(data)
-              //// console.log("User Found !!!", data);
-              return res.send({
-                status: 200,
-                message: "Log In Successfully !!!",
-                data: {
-                  token,
-                  name: data.username,
-                  email: data.email,
-                  CID: data.CID,
-                },
-              });
-            } else
-              return res.status(203).send({
-                status: 203,
-                message: "User Not Found !!!",
-              });
-          }
-        );
-      } else {
-        return res.status(203).send({
-          status: 203,
-          message: "User Not Found !!!",
-        });
-      }
-    })
-    .catch((err) => {
-      console.log({
+    let { email, password } = req.body;
+
+    if (!email || !password)
+      return res.status(203).send({
         status: 203,
-        message: "User Not Found !!!",
-        err,
+        message: "Missing payload.",
       });
+
+    let data = await userDB.findOne(
+      { email: email.toLowerCase() },
+      { _id: 0, username: 1, email: 1, CID: 1, DID: 1, password: 1 }
+    );
+    if (data) {
+      bcrypt.compare(password, data.password, (err, result) =>
+        check(err, result, data, res)
+      );
+    } else {
       return res.status(203).send({
         status: 203,
         message: "User Not Found !!!",
-        err,
       });
+    }
+  } catch (error) {
+    console.log(error);
+    return res.status(500).send({
+      status: 500,
+      message: "Something went wrong.",
     });
+  }
 };
+
+// check the password is correct or not
+
+function check(err, result, userData, res) {
+  if (result) {
+    let token = generateJWT(userData.toJSON());
+    return res.send({
+      status: 200,
+      message: "Log In Successfully.",
+      data: {
+        token,
+        name: userData.username,
+        email: userData.email,
+        CID: userData.CID,
+        DID: userData.DID,
+      },
+    });
+  } else
+    return res.status(203).send({
+      status: 203,
+      message: "Incorrect credentials !!!",
+    });
+}
 
 // get customer
 exports.getCustomer = async (req, res) => {
@@ -159,7 +182,7 @@ exports.getCustomerAddress = async (req, res) => {
       return res.status(203).send({
         status: 203,
         message: "No customer found.",
-        data : []
+        data: [],
       });
   } catch (error) {
     console.log(err);
@@ -184,15 +207,30 @@ exports.updateCustomer = async (req, res) => {
 
 // route for send Verification Link
 exports.sendVerificationLink = async (req, res) => {
-  console.log(req.body);
+  try {
+    // making a token from userData in the form of token and verify
+    const token = generateJWT(req.body);
 
-  // making a token from userData in the form of token and verify
-  const token = generateJWT(req.body);
-  // send mail with defined transport object
-  transporter
-    .sendMail({
+    let regex = /^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$/;
+
+    let { email, password } = req.body;
+
+    if (!email || email === "" || !regex.test(email))
+      return res.status(203).send({
+        status: 203,
+        message: "Provided email is not appropriate or missing in payload.",
+      });
+
+    if (!password || password === "")
+      return res.status(203).send({
+        status: 203,
+        message: "Please provide the password in payload.",
+      });
+
+    // send mail with defined transport object
+    let check = await transporter.sendMail({
       from: "woodshala@gmail.com", // sender address
-      to: `${req.body.email}`, // list of receivers
+      to: `${email}`, // list of receivers
       subject: "Verification Link from woodshala !!!", // Subject line
       text: "Hello world?", // plain text body
       html: `<h1>Thanks for choosing us !!!</h1>
@@ -202,23 +240,55 @@ exports.sendVerificationLink = async (req, res) => {
       }>click here</a> to login Woodshala.</p>
         <h5>Note :- This link is valid for one time use only.</h5>
         `, // html body
-    })
-    .then((response) => {
-      // console.log(response)
-      res.status(200).send({ message: "Verification mail has been sent !!! " });
-    })
-    .catch((err) => {
-      console.log(err);
-      res.status(500).send({ message: "Something went wrong !!!" });
     });
+
+    if (check)
+      return res
+        .status(200)
+        .send({ status: 200, message: "Verification mail has been sent !!! " });
+    else
+      return res.status(203).send({
+        status: 203,
+        message: "Facing an issue while sending the mail.",
+      });
+  } catch (error) {
+    console.log(error);
+    return res.status(500).send({
+      status: 500,
+      message: "Something went wrong.",
+    });
+  }
 };
 
 exports.verify = async (req, res) => {
-  JWT.verify(req.query.token, process.env.JWT_Secrete, (err, user) => {
-    // console.log(user)
-    if (err) return res.status(403).send({ message: "False Token" });
-    return res.status(200).send(user);
-  });
+  try {
+    let {token} = req.query;
+
+    if(!token)
+    return res.status(203).send({
+      status : 203,
+      message : "Please provide the token."
+    })
+
+    JWT.verify(token, process.env.JWT_Secrete, (err, user) => {
+      // console.log(user)
+      if (err) return res.status(203).send({ status : 203, message: "False Token" });
+
+      return res.status(200).send({
+        status : 200,
+        message : "Token verified successfully.",
+        data : user
+      });
+    });
+  } catch (error) {
+    console.log(error)
+    return res.status(500).send({
+      status : 500,
+      message : "Token verification failed.",
+      data : {}
+    });
+  }
+  
 };
 
 exports.captcha = async (req, res) => {
@@ -262,5 +332,11 @@ exports.masterCheckIn = async (req, res) => {
     return res.sendStatus(500);
   }
 };
+
+// userList()
+async function userList() {
+  let data = await userDB.find({});
+  console.log(data);
+}
 
 // ================================================= Apis for User Ends =======================================================

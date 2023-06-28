@@ -34,13 +34,22 @@ exports.setAddress = async (req, res) => {
     )
       return res.status(203).send({ status: 203, message: "Payload missing." });
 
-    let check = null;
+    
+          
+    let query = {};
 
-    if (CID) check = await user.findOne({ CID : String(CID) }, { address: 1 });
-    else check = await user.findOne({ DID }, { address: 1 });
+    if(CID)
+    query = {CID : String(CID) }
+    else
+    query = {DID : String(DID) }
+
+
+
+    let check = null;
+    check = await user.findOne(query, { address: 1 });
 
     
-    console.log(check)
+    // console.log(check)
     if (!check && CID)
         return res
         .status(203)
@@ -48,7 +57,7 @@ exports.setAddress = async (req, res) => {
 
     if (CID)
       check = await user.findOneAndUpdate(
-        { CID },
+        { CID : String(CID) },
         {
           address: [
             ...check.address,
@@ -79,7 +88,7 @@ exports.setAddress = async (req, res) => {
         )
 
         check = await user.findOneAndUpdate(
-          { DID },
+          { DID : String(DID) },
           {
             DID,
             register_time: Date.now(),
@@ -105,7 +114,7 @@ exports.setAddress = async (req, res) => {
       else
       {
         check = await user.findOneAndUpdate(
-          { DID },
+          { DID :  String(DID) },
           {
             address: [
               ...check.address,
@@ -151,10 +160,17 @@ exports.getAddress = async (req, res) => {
         .status(203)
         .send({ status: 203, message: "Please provide a valid ID." });
 
+    if(CID)
+    query = {CID : String(CID) }
+    else
+    query = {DID : String(DID) }
+
     let data = await user.findOne(
-      { $and: [{ CID }, { DID }] },
+      query,
       {
         address: 1,
+        CID : 1,
+        DID : 1
       }
     );
 
@@ -186,8 +202,16 @@ exports.getCustomerDetails = async (req,res) =>{
       message : "Missing ID.",
       data : {}
     })
+    
+    let query = {};
 
-    let data = await user.findOne({CID})
+    if(CID)
+    query = {CID : String(CID) }
+    else
+    query = {DID : String(DID) }
+
+
+    let data = await user.findOne(query)
 
     if(data)
     return res.status(200).send({

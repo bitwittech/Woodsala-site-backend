@@ -6,8 +6,9 @@ const review = require("../../database/models/review");
 
 exports.getProduct = async (req, res) => {
   try {
-    // console.log(req.query);
     let filter = {};
+
+    let {CID,DID} = req.query
 
     if (req.query.filter) {
       filter = JSON.parse(req.query.filter);
@@ -74,8 +75,6 @@ exports.getProduct = async (req, res) => {
 
     if (filterArray.length > 0) query = { $or: filterArray };
 
-    // console.log(JSON.stringify(query));
-
     // final aggregation computing
     let data = await product.aggregate([
       { $match: query },
@@ -108,6 +107,28 @@ exports.getProduct = async (req, res) => {
           foreignField: "category_name",
           as: "categories",
         },
+      },
+      {
+        $lookup: {
+          from: "wishlists",
+          localField: "SKU",
+          pipeline:[{
+            $project : {_id : 1}
+          }],
+          foreignField: "product_id",
+          as: "wishlist",
+        },        
+      },
+      {
+        $addFields: {
+          isWishlist: {
+            $cond: {
+              if: { $eq: [{ $size: '$wishlist' }, 0] },
+              then: false,
+              else: true
+            }
+          }
+        }
       },
       { $sort: { selling_price: 1 } },
       { $skip: req.query.pageNumber > 0 ? (req.query.pageNumber - 1) * 10 : 0 },
@@ -144,6 +165,31 @@ exports.getProduct = async (req, res) => {
     });
   }
 };
+
+// const Product = require('./models/Product'); // Assuming you have a Product model defined
+
+// Product.aggregate([
+//   {
+//     $lookup: {
+//       from: 'wishlists', // Assuming the wishlist collection is named 'wishlists'
+//       localField: '_id',
+//       foreignField: 'productId',
+//       as: 'wishlist'
+//     }
+//   },
+//   {
+//     $addFields: {
+//       isWishlist: {
+//         $cond: {
+//           if: { $eq: [{ $size: '$wishlist' }, 0] },
+//           then: false,
+//           else: true
+//         }
+//       }
+//     }
+//   }
+// ]);
+
 
 exports.getProductDetails = async (req, res) => {
   if (req.query === {})
