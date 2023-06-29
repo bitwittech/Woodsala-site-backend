@@ -1,9 +1,20 @@
+require('dotenv').config();
+
 const cart = require("../../database/models/cart");
 const wishlist = require("../../database/models/wishlist");
 const coupon = require("../../database/models/coupon");
 const product = require("../../database/models/product");
 const user = require("../../database/models/user");
 const order = require("../../database/models/order");
+const Razorpay = require("razorpay");
+const { v4: uuidv4 } = require("uuid");
+
+// creating the Instance for placing the payment into the Razorpay
+   const razorpay = new Razorpay({
+    key_id: process.env.RAZORPAY_KEY_ID,
+    key_secret: process.env.RAZORPAY_SECRET,
+  });
+
 
 // Cart ======================
 
@@ -928,3 +939,183 @@ exports.CODCheckOut = async (req, res) => {
     });
   }
 };
+
+// Placing order vai a upi 
+
+exports.UPICheckOut = async (req,res)=>{
+  try {
+
+    // here I need to add the UPI method for the COD upto the Limit
+
+    let { CID, DID, order_id} = req.body;
+
+    if ((!CID && !DID) || !order_id)
+      return res.status(203).send({
+        status: 203,
+        message: "Missing payload.",
+        data: {},
+      });
+
+    let query = {};
+
+    if (CID) query = { CID: String(CID) };
+    else query = { DID: String(DID) };
+
+    // fetching the order details
+    let order_data = await order.findOne(
+      {
+        $and: [{ O: order_id }, query, { payment_status: false }],
+      },
+      { O: 1,total : 1}
+    );
+
+    if (!order_data)
+      return res.status(203).send({
+        status: 203,
+        message: "Order not found !!!",
+        data: {},
+      });
+    let { O, total, subTotal, coupon_code, discount } = order_data;
+
+ 
+    // const {pay_method_remaining, total, advance_received, limit_without_advance } = req.body
+
+    // const amount = (pay_method_remaining === "COD" && limit_without_advance <= total) ?  advance_received : total
+
+    console.log(total)
+    const options = {
+      amount: parseInt(total) * 100, // amount in smallest currency unit
+      currency: "INR",
+      receipt: `RID-${uuidv4()}`,
+      payment_capture: 1,
+    };
+
+    // getting the order details and recipt details from it
+    const order_place = await razorpay.orders.create(options);
+
+    console.log(order_place)
+    if(order_place)
+    {
+      return res.status(200).send(
+        {
+          status : 200,
+          message : "Order placed successfully. Please complete the payment and checkout.",
+          data :  {...order_place,order_id : O,}
+        }
+      )
+    }
+    else return res.status(203).send(    {
+      status : 203,
+      message : " Facing an issues while placing an order.",
+      data : {}
+    });
+  } catch (error) {
+    console.log(error)
+    return res.status(500).send( {
+      status : 500,
+      message : "Something went wrong !!!",
+      data : {}
+    });
+  }
+}
+
+// verify the payment with rzorpay
+
+exports.verifyPayment = async (req,res)=>{
+  try{
+
+    const { 
+      order_id,
+      razorpay_payment_id,
+      razorpay_order_id,
+      razorpay_signature } = req.body;
+
+    // console.log(req.body)
+    
+    if(!order_id || !razorpay_order_id || !razorpay_payment_id || !razorpay_signature)
+    return res.status(203).send({
+      status : 203 ,
+      message : "Missing payload."
+    })
+
+    // Verify the payment using Razorpay API
+    const attributes = {
+      razorpay_payment_id,
+      razorpay_order_id,
+      razorpay_signature,
+    };
+
+    // check for the valid order ID
+    let checkOrder = await order.findOne({O:order_id,payment_status : false}).count()
+
+    // console.log(checkOrder)
+    if(checkOrder === 0)
+    return res.status(203).send({
+      status : 203,
+      message : "May be order Id is not valid or already placed."
+    })
+
+    // for reusing the variable 
+    checkOrder = undefined;
+  
+    // first the checking the payment is existing or not in Razorpay
+    let payment_ID_check = await razorpay.payments.fetch(razorpay_payment_id)
+    
+    if(payment_ID_check)
+    {
+      // verifying the signature is valid or not
+      const isValidSignature = razorpay.utils.verifyPaymentSignature(attributes);
+  
+        if (isValidSignature) 
+        {
+           checkOrder = await order.findOneUpdate({O:order_id},{
+            payment_status : true,
+            pay_method_remaining: "UPI",
+            pay_method_advance: "UPI",
+           })
+
+          if(!checkOrder)
+          return res.status(200).send({
+            status : 200,
+            message : "Error while updating order."
+          });
+
+          return  res.status(200).send({
+             status : 200,
+             message : "Thanks, payment successful received."
+           });
+        }
+        else {
+          return res.status(200).send({
+            status : 200,
+            message : "Sorry, payment failed.",
+            reason : isValidSignature
+          });
+        }
+    }
+    else{
+      return res.status(203).send({
+        status : 203,
+        message : `Sorry, but seems like payment_id ${payment_id} is not valid.`,
+      });
+    }
+
+  }
+  catch(error){
+    console.log(error)
+    
+    if(error.status === 400)
+    return res.status(203).send( {
+      status : 203,
+      message : "Something went wrong !!!",
+      error  
+    });
+    
+    return res.status(500).send( {
+      status : 500,
+      message : "Something went wrong !!!",
+      error  
+    });
+  }
+}
+

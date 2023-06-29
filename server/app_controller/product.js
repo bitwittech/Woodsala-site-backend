@@ -8,7 +8,14 @@ exports.getProduct = async (req, res) => {
   try {
     let filter = {};
 
-    let {CID,DID} = req.query
+    let { CID, DID } = req.query;
+
+    let query_user = [];
+
+    if (CID) query_user = ["$CID", CID];
+    else query_user = ["$DID", DID];
+
+    console.log(query_user);
 
     if (req.query.filter) {
       filter = JSON.parse(req.query.filter);
@@ -93,6 +100,46 @@ exports.getProduct = async (req, res) => {
       },
       {
         $lookup: {
+          from: "wishlists",
+          let: { product_id: "$SKU" },
+          pipeline: [
+            {
+              $match: {
+                $expr: {
+                  $and: [
+                    { $eq: ["$product_id", "$$product_id"] },
+                    { $eq: query_user },
+                  ],
+                },
+              },
+            },
+            {
+              $project: {
+                _id: 0,
+                CID: 0,
+                product_id: 0,
+                DID: 0,
+                __v: 0,
+                quantity: 0,
+              },
+            },
+          ],
+          as: "wishlist",
+        },
+      },
+      {
+        $addFields: {
+          isWishlist: {
+            $cond: {
+              if: { $eq: [{ $size: "$wishlist" }, 0] },
+              then: false,
+              else: true,
+            },
+          },
+        },
+      },
+      {
+        $lookup: {
           from: "categories",
           localField: "category_name",
           pipeline: [
@@ -107,28 +154,6 @@ exports.getProduct = async (req, res) => {
           foreignField: "category_name",
           as: "categories",
         },
-      },
-      {
-        $lookup: {
-          from: "wishlists",
-          localField: "SKU",
-          pipeline:[{
-            $project : {_id : 1}
-          }],
-          foreignField: "product_id",
-          as: "wishlist",
-        },        
-      },
-      {
-        $addFields: {
-          isWishlist: {
-            $cond: {
-              if: { $eq: [{ $size: '$wishlist' }, 0] },
-              then: false,
-              else: true
-            }
-          }
-        }
       },
       { $sort: { selling_price: 1 } },
       { $skip: req.query.pageNumber > 0 ? (req.query.pageNumber - 1) * 10 : 0 },
@@ -166,36 +191,18 @@ exports.getProduct = async (req, res) => {
   }
 };
 
-// const Product = require('./models/Product'); // Assuming you have a Product model defined
-
-// Product.aggregate([
-//   {
-//     $lookup: {
-//       from: 'wishlists', // Assuming the wishlist collection is named 'wishlists'
-//       localField: '_id',
-//       foreignField: 'productId',
-//       as: 'wishlist'
-//     }
-//   },
-//   {
-//     $addFields: {
-//       isWishlist: {
-//         $cond: {
-//           if: { $eq: [{ $size: '$wishlist' }, 0] },
-//           then: false,
-//           else: true
-//         }
-//       }
-//     }
-//   }
-// ]);
-
-
 exports.getProductDetails = async (req, res) => {
   if (req.query === {})
     return res.status(404).send({ message: "Please Provide the product id." });
   try {
     // Consider size, material, range,
+
+    let { CID, DID } = req.query;
+
+    let query_user = [];
+
+    if (CID) query_user = ["$CID", CID];
+    else query_user = ["$DID", DID];
 
     // fetching the product
     let productDetail = await product.aggregate([
@@ -281,6 +288,46 @@ exports.getProductDetails = async (req, res) => {
           as: "reviews",
         },
       },
+      {
+        $lookup: {
+          from: "wishlists",
+          let: { product_id: "$SKU" },
+          pipeline: [
+            {
+              $match: {
+                $expr: {
+                  $and: [
+                    { $eq: ["$product_id", "$$product_id"] },
+                    { $eq: query_user },
+                  ],
+                },
+              },
+            },
+            {
+              $project: {
+                _id: 0,
+                CID: 0,
+                product_id: 0,
+                DID: 0,
+                __v: 0,
+                quantity: 0,
+              },
+            },
+          ],
+          as: "wishlist",
+        },
+      },
+      {
+        $addFields: {
+          isWishlist: {
+            $cond: {
+              if: { $eq: [{ $size: "$wishlist" }, 0] },
+              then: false,
+              else: true,
+            },
+          },
+        },
+      },
     ]);
 
     // sum of discount limit
@@ -320,16 +367,72 @@ exports.fetchVariants = async (req, res) => {
   try {
     let { ACIN } = req.query;
 
-    let variants = await product.find(
-      { ACIN: ACIN },
-      {
+    if(!ACIN)
+    return res.status(203).send({
+      status : "203",
+      message : "Missing Payload.",
+      data : []
+    })
+
+    let { CID, DID } = req.query;
+
+    let query_user = [];
+
+    if (CID) query_user = ["$CID", CID];
+    else query_user = ["$DID", DID];
+
+    let variants = await product.aggregate([
+      {$match : { ACIN: ACIN } },
+      {$project : {
         _id: 1,
         SKU: 1,
         primary_material: 1,
         product_title: 1,
         product_image: 1,
         category_name: 1,
-      }
+      }},
+
+    {
+      $lookup: {
+        from: "wishlists",
+        let: { product_id: "$SKU" },
+        pipeline: [
+          {
+            $match: {
+              $expr: {
+                $and: [
+                  { $eq: ["$product_id", "$$product_id"] },
+                  { $eq: query_user },
+                ],
+              },
+            },
+          },
+          {
+            $project: {
+              _id: 0,
+              CID: 0,
+              product_id: 0,
+              DID: 0,
+              __v: 0,
+              quantity: 0,
+            },
+          },
+        ],
+        as: "wishlist",
+      },
+    },
+    {
+      $addFields: {
+        isWishlist: {
+          $cond: {
+            if: { $eq: [{ $size: "$wishlist" }, 0] },
+            then: false,
+            else: true,
+          },
+        },
+      },
+    },
+    ]
     );
 
     if (variants.length > 1) {
@@ -446,24 +549,28 @@ exports.getRelatedProduct = async (req, res) => {
   try {
     let { category_name, product_title, limit } = req.query;
 
-    if(!category_name && !product_title) 
-    return res.status(203).send({
-      status : 203,
-      message : "Missing Payload !!!",
-      data : []
-    })
+    if (!category_name && !product_title)
+      return res.status(203).send({
+        status: 203,
+        message: "Missing Payload !!!",
+        data: [],
+      });
 
-    console.log(
-      String(category_name),String(product_title)
-    )
+
+    let { CID, DID } = req.query;
+
+    let query_user = [];
+
+    if (CID) query_user = ["$CID", CID];
+    else query_user = ["$DID", DID];
 
     // for proceeding the filter if there is wrong json formate
     let data = await product.aggregate([
       {
         $match: {
           $or: [
-            { category_name: { $regex: String(category_name) ,$options: "i" } },
-            { product_title: { $regex: String(product_title) ,$options: "i" } },
+            { category_name: { $regex: String(category_name), $options: "i" } },
+            { product_title: { $regex: String(product_title), $options: "i" } },
           ],
         },
       },
@@ -479,29 +586,67 @@ exports.getRelatedProduct = async (req, res) => {
           category_name: { $first: "$category_name" },
         },
       },
+    {
+      $lookup: {
+        from: "wishlists",
+        let: { product_id: "$SKU" },
+        pipeline: [
+          {
+            $match: {
+              $expr: {
+                $and: [
+                  { $eq: ["$product_id", "$$product_id"] },
+                  { $eq: query_user },
+                ],
+              },
+            },
+          },
+          {
+            $project: {
+              _id: 0,
+              CID: 0,
+              product_id: 0,
+              DID: 0,
+              __v: 0,
+              quantity: 0,
+            },
+          },
+        ],
+        as: "wishlist",
+      },
+    },
+    {
+      $addFields: {
+        isWishlist: {
+          $cond: {
+            if: { $eq: [{ $size: "$wishlist" }, 0] },
+            then: false,
+            else: true,
+          },
+        },
+      },
+    },
       { $limit: parseInt(limit) || 8 },
     ]);
 
-    if(data)
+    if (data)
       return res.status(200).send({
-        status : 200,
-        message : "Related product list fetched successfully.",
-        data
-      })
+        status: 200,
+        message: "Related product list fetched successfully.",
+        data,
+      });
     else
-    return res.status(203).send({
-      status : 203,
-      message : "No Related products found.",
-      data : []
-    }) 
-
-
+      return res.status(203).send({
+        status: 203,
+        message: "No Related products found.",
+        data: [],
+      });
   } catch (err) {
-    console.log(err)
+    console.log(err);
     return res.status(500).send({
-      status : 500,
-      message : "Something went wrong !!!",
-      data : []
-    }) 
+      status: 500,
+      message: "Something went wrong !!!",
+      data: [],
+    });
   }
 };

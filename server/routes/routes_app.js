@@ -49,6 +49,8 @@ route.get("/getWishlistItem",cart.getWishlistItem)
 // checkout 
 route.post("/calculate",upload,cart.calculate)
 route.post("/checkoutCOD",upload,cart.CODCheckOut)
+route.post("/checkoutUPI",upload,cart.UPICheckOut)
+route.post("/verifyPayment",upload,cart.verifyPayment)
 
 // order
 route.get("/getOrder",checkout.getOrders)
