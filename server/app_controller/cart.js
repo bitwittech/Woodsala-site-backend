@@ -449,7 +449,7 @@ exports.calculate = async (req, res) => {
   try {
     const { CID, DID, order_id, address_id, promo_id } = req.body;
 
-    if ((!CID && !DID) || !address_id)
+    if (!CID && !DID)
       return res.status(203).send({
         status: 203,
         message: "Missing Payload",
@@ -599,6 +599,8 @@ exports.calculate = async (req, res) => {
         order_id
       );
     }
+
+    // console.log(order_data)
     if (order_data.status === 200) {
       items = order_data.items;
       order_data = await order.findOneAndUpdate(
@@ -607,11 +609,7 @@ exports.calculate = async (req, res) => {
         { upsert: true, new: true }
       );
     } else {
-      return res.status(203).send({
-        status: 203,
-        message: "Error in creating order.",
-        data: {},
-      });
+      return res.status(203).send(order_data);
     }
 
     delete items.product;
@@ -671,14 +669,18 @@ async function CreateOrder(CID, DID, items, promo_id, address_id) {
   try {
     let O = await GetOrderID();
 
+    if(!address_id)
+    return {
+      status : 203,
+      message : "Missing address id."
+    }
+
     let query = {};
 
-    if (CID) query = { CID: String(CID) };
-    else query = { DID: String(DID) };
+    if (CID) query = {CID};
+    else query = {DID};
 
-    console.log(address_id);
-
-    // let customer_address = await user.findOne({...query,"address.id" : address_id},{address : 1});
+    // console.log(query,address_id)
     let customer_address = await user.aggregate([
       { $match: query },
       {
@@ -694,11 +696,13 @@ async function CreateOrder(CID, DID, items, promo_id, address_id) {
       },
     ]);
 
-    if (customer_address.length > 1)
-      return res.status(203).send({
+    // console.log(customer_address) 
+
+    if (customer_address.length < 1)
+      return {
         status: 203,
         message: "My be the provided CID or address id not found.",
-      });
+      };
     else customer_address = customer_address[0].address;
 
     let promoData;
@@ -790,10 +794,9 @@ async function UpdateOrder(CID, DID, items, promo_id, address_id, order_id) {
   try {
     let query = {};
 
-    if (CID) query = { CID: String(CID) };
-    else query = { DID: String(DID) };
+    if (CID) query = { CID };
+    else query = { DID };
 
-    let customer_address = await user.findOne(query, { address: 1 });
     let promoData;
     // check for promo code applied or not?
     if (promo_id)
@@ -809,47 +812,55 @@ async function UpdateOrder(CID, DID, items, promo_id, address_id, order_id) {
     // promo code identification
     if (promoData) {
       if (promoData.coupon_type === "FLAT")
-        items = {
+      items = {
           ...items,
           coupon_discount: promoData.flat_amount,
           total: items.total - promoData.flat_amount,
         };
-      else if (promoData.coupon_type === "OFF(%)")
+        else if (promoData.coupon_type === "OFF(%)")
         items = {
           ...items,
           coupon_discount: (items.total / 100) * promoData.off,
           total: items.total - (items.total / 100) * promoData.off,
         };
-      else
+        else
         items = {
           ...items,
           coupon_discount: 0,
         };
-    } else
+      } else
       items = {
         ...items,
         coupon_discount: 0,
       };
+    
+    let customer_address;
+    if(address_id){
+    customer_address = await user.aggregate([
+      { $match: query },
+      {
+        $project: {
+          address: {
+            $filter: {
+              input: "$address",
+              as: "address",
+              cond: { $eq: ["$$address.id", address_id] }, // Specify the condition to match the desired object
+            },
+          },
+        },
+      },
+    ]);
 
-    // check for customer ID in proper or not
-    if (customer_address === {})
+    if (customer_address.length < 1)
       return {
         status: 203,
-        message: "Customer ID is not valid.",
+        message: "My be the provided CID or address id not found.",
       };
+    else customer_address = customer_address[0].address;
+    }
 
-    // check the customer having an valid address for not
-    if (customer_address)
-      customer_address = customer_address.address.find(
-        (row) => row.id === address_id
-      );
-    else
-      return {
-        status: 203,
-        message: "Not a valid address ID.",
-      };
-
-    let data = {
+    if(address_id)
+    data = {
       O: order_id,
       customer_name: customer_address.customer_name,
       customer_email: customer_address.email,
@@ -872,7 +883,18 @@ async function UpdateOrder(CID, DID, items, promo_id, address_id, order_id) {
       landmark: customer_address.landmark,
       coupon_code: promo_id,
     };
-
+    else
+    data = {
+      O: order_id,
+      quantity: items.product.quantity,
+      discount_per_product: items.product.discount_per_product,
+      product_price: items.product.product_price,
+      items: items.product.items,
+      subTotal: items.subTotal,
+      discount: items.discount,
+      total: items.total,
+      coupon_code: promo_id,
+    };
     return {
       status: 200,
       message: "Order created successfully.",
@@ -883,7 +905,7 @@ async function UpdateOrder(CID, DID, items, promo_id, address_id, order_id) {
     console.log(error);
     return {
       status: 500,
-      message: "Error",
+      message: "Error Hello",
       items,
     };
   }
