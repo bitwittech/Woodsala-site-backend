@@ -1,4 +1,4 @@
-require('dotenv').config();
+require("dotenv").config();
 
 const cart = require("../../database/models/cart");
 const wishlist = require("../../database/models/wishlist");
@@ -10,11 +10,10 @@ const Razorpay = require("razorpay");
 const { v4: uuidv4 } = require("uuid");
 
 // creating the Instance for placing the payment into the Razorpay
-   const razorpay = new Razorpay({
-    key_id: process.env.RAZORPAY_KEY_ID,
-    key_secret: process.env.RAZORPAY_SECRET,
-  });
-
+const razorpay = new Razorpay({
+  key_id: process.env.RAZORPAY_KEY_ID,
+  key_secret: process.env.RAZORPAY_SECRET,
+});
 
 // Cart ======================
 
@@ -103,7 +102,9 @@ exports.removeCartItem = async (req, res) => {
       });
   } catch (err) {
     console.log(err);
-    return res.status(500).send({ message: "Something went wrong !!!" });
+    return res
+      .status(500)
+      .send({ status: 500, message: "Something went wrong !!!" });
   }
 };
 
@@ -182,7 +183,9 @@ exports.getCartItem = async (req, res) => {
       });
   } catch (err) {
     console.log(err);
-    return res.status(500).send({ message: "Something went wrong !!!" });
+    return res
+      .status(500)
+      .send({ status: 500, message: "Something went wrong !!!", data: {} });
   }
 };
 
@@ -273,7 +276,9 @@ exports.removeWishlistItem = async (req, res) => {
       });
   } catch (err) {
     console.log(err);
-    return res.status(500).send({ message: "Something went wrong !!!" });
+    return res
+      .status(500)
+      .send({ status: 500, message: "Something went wrong !!!", data: {} });
   }
 };
 
@@ -357,7 +362,9 @@ exports.getWishlistItem = async (req, res) => {
       });
   } catch (err) {
     console.log(err);
-    return res.status(500).send({ message: "Something went wrong !!!" });
+    return res
+      .status(500)
+      .send({ status: 500, message: "Something went wrong !!!", data: {} });
   }
 };
 
@@ -393,7 +400,9 @@ exports.getCount = async (req, res) => {
       });
   } catch (err) {
     console.log(err);
-    return res.status(500).send({ message: "Something went wrong !!!" });
+    return res
+      .status(500)
+      .send({ status: 500, message: "Something went wrong !!!", data: {} });
   }
 };
 
@@ -429,7 +438,9 @@ exports.getPromoCode = async (req, res) => {
       });
   } catch (err) {
     console.log(err);
-    return res.status(500).send({ message: "Something went wrong !!!" });
+    return res
+      .status(500)
+      .send({ status: 500, message: "Something went wrong !!!", data: {} });
   }
 };
 
@@ -489,6 +500,7 @@ exports.calculate = async (req, res) => {
       },
     ]);
 
+    // console.log(">>>", items);
     let product = {
       quantity: {},
       discount_per_product: {},
@@ -543,6 +555,12 @@ exports.calculate = async (req, res) => {
         },
         [0, 0]
       );
+    else
+      return res.status(203).send({
+        status: 203,
+        message: "Please add some item is your cart first.",
+        data: {},
+      });
 
     items = {
       subTotal: items[0],
@@ -568,7 +586,7 @@ exports.calculate = async (req, res) => {
       if (count === 0)
         return res.status(203).send({
           status: 203,
-          message: `Order ${order_id} is not belongs to the respective CID or DID`,
+          message: `Order ${order_id} is not belongs to the respective CID or DID. May be the order already placed.`,
           data: {},
         });
 
@@ -612,7 +630,9 @@ exports.calculate = async (req, res) => {
       });
   } catch (err) {
     console.log(err);
-    return res.status(500).send({ message: "Something went wrong !!!" });
+    return res
+      .status(500)
+      .send({ status: 500, message: "Something went wrong !!!", data: {} });
   }
 };
 
@@ -656,9 +676,32 @@ async function CreateOrder(CID, DID, items, promo_id, address_id) {
     if (CID) query = { CID: String(CID) };
     else query = { DID: String(DID) };
 
-    let customer_address = await user.findOne(query, { address: 1 });
-    let promoData;
+    console.log(address_id);
 
+    // let customer_address = await user.findOne({...query,"address.id" : address_id},{address : 1});
+    let customer_address = await user.aggregate([
+      { $match: query },
+      {
+        $project: {
+          address: {
+            $filter: {
+              input: "$address",
+              as: "address",
+              cond: { $eq: ["$$address.id", address_id] }, // Specify the condition to match the desired object
+            },
+          },
+        },
+      },
+    ]);
+
+    if (customer_address.length > 1)
+      return res.status(203).send({
+        status: 203,
+        message: "My be the provided CID or address id not found.",
+      });
+    else customer_address = customer_address[0].address;
+
+    let promoData;
     // check for promo code applied or not?
     if (promo_id)
       promoData = await coupon.findOne(
@@ -695,23 +738,9 @@ async function CreateOrder(CID, DID, items, promo_id, address_id) {
         coupon_discount: 0,
       };
 
-    // check for customer ID in proper or not
-    if (customer_address === {})
-      return {
-        status: 203,
-        message: "Customer ID is not valid.",
-      };
+    console.log(items);
 
-    // check the customer having an valid address for not
-    if (customer_address)
-      customer_address = customer_address.address.find(
-        (row) => row.id === address_id
-      );
-    else
-      return {
-        status: 203,
-        message: "Not a valid address ID.",
-      };
+    // console.log("2>>",customer_address)
 
     let data = {
       O: O.O,
@@ -940,14 +969,13 @@ exports.CODCheckOut = async (req, res) => {
   }
 };
 
-// Placing order vai a upi 
+// Placing order vai a upi
 
-exports.UPICheckOut = async (req,res)=>{
+exports.UPICheckOut = async (req, res) => {
   try {
-
     // here I need to add the UPI method for the COD upto the Limit
 
-    let { CID, DID, order_id} = req.body;
+    let { CID, DID, order_id } = req.body;
 
     if ((!CID && !DID) || !order_id)
       return res.status(203).send({
@@ -966,7 +994,7 @@ exports.UPICheckOut = async (req,res)=>{
       {
         $and: [{ O: order_id }, query, { payment_status: false }],
       },
-      { O: 1,total : 1}
+      { O: 1, total: 1 }
     );
 
     if (!order_data)
@@ -977,12 +1005,11 @@ exports.UPICheckOut = async (req,res)=>{
       });
     let { O, total, subTotal, coupon_code, discount } = order_data;
 
- 
     // const {pay_method_remaining, total, advance_received, limit_without_advance } = req.body
 
     // const amount = (pay_method_remaining === "COD" && limit_without_advance <= total) ?  advance_received : total
 
-    console.log(total)
+    console.log(total);
     const options = {
       amount: parseInt(total) * 100, // amount in smallest currency unit
       currency: "INR",
@@ -993,50 +1020,53 @@ exports.UPICheckOut = async (req,res)=>{
     // getting the order details and recipt details from it
     const order_place = await razorpay.orders.create(options);
 
-    console.log(order_place)
-    if(order_place)
-    {
-      return res.status(200).send(
-        {
-          status : 200,
-          message : "Order placed successfully. Please complete the payment and checkout.",
-          data :  {...order_place,order_id : O,}
-        }
-      )
-    }
-    else return res.status(203).send(    {
-      status : 203,
-      message : " Facing an issues while placing an order.",
-      data : {}
-    });
+    console.log(order_place);
+    if (order_place) {
+      return res.status(200).send({
+        status: 200,
+        message:
+          "Order placed successfully. Please complete the payment and checkout.",
+        data: { ...order_place, order_id: O },
+      });
+    } else
+      return res.status(203).send({
+        status: 203,
+        message: " Facing an issues while placing an order.",
+        data: {},
+      });
   } catch (error) {
-    console.log(error)
-    return res.status(500).send( {
-      status : 500,
-      message : "Something went wrong !!!",
-      data : {}
+    console.log(error);
+    return res.status(500).send({
+      status: 500,
+      message: "Something went wrong !!!",
+      data: {},
     });
   }
-}
+};
 
 // verify the payment with rzorpay
 
-exports.verifyPayment = async (req,res)=>{
-  try{
-
-    const { 
+exports.verifyPayment = async (req, res) => {
+  try {
+    const {
       order_id,
       razorpay_payment_id,
       razorpay_order_id,
-      razorpay_signature } = req.body;
+      razorpay_signature,
+    } = req.body;
 
     // console.log(req.body)
-    
-    if(!order_id || !razorpay_order_id || !razorpay_payment_id || !razorpay_signature)
-    return res.status(203).send({
-      status : 203 ,
-      message : "Missing payload."
-    })
+
+    if (
+      !order_id ||
+      !razorpay_order_id ||
+      !razorpay_payment_id ||
+      !razorpay_signature
+    )
+      return res.status(203).send({
+        status: 203,
+        message: "Missing payload.",
+      });
 
     // Verify the payment using Razorpay API
     const attributes = {
@@ -1046,76 +1076,75 @@ exports.verifyPayment = async (req,res)=>{
     };
 
     // check for the valid order ID
-    let checkOrder = await order.findOne({O:order_id,payment_status : false}).count()
+    let checkOrder = await order
+      .findOne({ O: order_id, payment_status: false })
+      .count();
 
     // console.log(checkOrder)
-    if(checkOrder === 0)
-    return res.status(203).send({
-      status : 203,
-      message : "May be order Id is not valid or already placed."
-    })
+    if (checkOrder === 0)
+      return res.status(203).send({
+        status: 203,
+        message: "May be order Id is not valid or already placed.",
+      });
 
-    // for reusing the variable 
+    // for reusing the variable
     checkOrder = undefined;
-  
+
     // first the checking the payment is existing or not in Razorpay
-    let payment_ID_check = await razorpay.payments.fetch(razorpay_payment_id)
-    
-    if(payment_ID_check)
-    {
+    let payment_ID_check = await razorpay.payments.fetch(razorpay_payment_id);
+
+    if (payment_ID_check) {
       // verifying the signature is valid or not
-      const isValidSignature = razorpay.utils.verifyPaymentSignature(attributes);
-  
-        if (isValidSignature) 
-        {
-           checkOrder = await order.findOneUpdate({O:order_id},{
-            payment_status : true,
+      const isValidSignature =
+        razorpay.utils.verifyPaymentSignature(attributes);
+
+      if (isValidSignature) {
+        checkOrder = await order.findOneUpdate(
+          { O: order_id },
+          {
+            payment_status: true,
             pay_method_remaining: "UPI",
             pay_method_advance: "UPI",
-           })
+          }
+        );
 
-          if(!checkOrder)
+        if (!checkOrder)
           return res.status(200).send({
-            status : 200,
-            message : "Error while updating order."
+            status: 200,
+            message: "Error while updating order.",
           });
 
-          return  res.status(200).send({
-             status : 200,
-             message : "Thanks, payment successful received."
-           });
-        }
-        else {
-          return res.status(200).send({
-            status : 200,
-            message : "Sorry, payment failed.",
-            reason : isValidSignature
-          });
-        }
-    }
-    else{
+        return res.status(200).send({
+          status: 200,
+          message: "Thanks, payment successful received.",
+        });
+      } else {
+        return res.status(200).send({
+          status: 200,
+          message: "Sorry, payment failed.",
+          reason: isValidSignature,
+        });
+      }
+    } else {
       return res.status(203).send({
-        status : 203,
-        message : `Sorry, but seems like payment_id ${payment_id} is not valid.`,
+        status: 203,
+        message: `Sorry, but seems like payment_id ${payment_id} is not valid.`,
       });
     }
+  } catch (error) {
+    console.log(error);
 
-  }
-  catch(error){
-    console.log(error)
-    
-    if(error.status === 400)
-    return res.status(203).send( {
-      status : 203,
-      message : "Something went wrong !!!",
-      error  
-    });
-    
-    return res.status(500).send( {
-      status : 500,
-      message : "Something went wrong !!!",
-      error  
+    if (error.status === 400)
+      return res.status(203).send({
+        status: 203,
+        message: "Something went wrong !!!",
+        error,
+      });
+
+    return res.status(500).send({
+      status: 500,
+      message: "Something went wrong !!!",
+      error,
     });
   }
-}
-
+};

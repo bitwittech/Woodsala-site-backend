@@ -1,5 +1,6 @@
 const { json } = require("body-parser");
 const user = require("../../database/models/user");
+const {v4: uuidV4} =require("uuid")
 
 exports.setAddress = async (req, res) => {
   try {
@@ -34,8 +35,7 @@ exports.setAddress = async (req, res) => {
     )
       return res.status(203).send({ status: 203, message: "Payload missing." });
 
-    
-          
+
     let query = {};
 
     if(CID)
@@ -55,6 +55,7 @@ exports.setAddress = async (req, res) => {
         .status(203)
         .send({ status: 203, message: "Please provide the valid ID." });
 
+     // this will add the address against registered customer 
     if (CID)
       check = await user.findOneAndUpdate(
         { CID : String(CID) },
@@ -75,8 +76,8 @@ exports.setAddress = async (req, res) => {
           ],
         }
       );
-    else {
-      if (!check)
+      else {
+        if (!check)
         {check = await user.find({$or:[{email},{mobile}]}).count()
         
         if(check > 0) return res.status(203).send(
@@ -85,11 +86,14 @@ exports.setAddress = async (req, res) => {
             message : "Sorry email or mobile already exist.",
             data : []
           }
-        )
-
+          )
+          // creating the new CID 
+          CID = `CID-${uuidV4()}`
+          // this will create a new customer based on DID with new CID
         check = await user.findOneAndUpdate(
           { DID : String(DID) },
           {
+            CID,
             DID,
             register_time: Date.now(),
             username: customer_name,
@@ -113,6 +117,7 @@ exports.setAddress = async (req, res) => {
         );}
       else
       {
+        // this will save the data against the DID 
         check = await user.findOneAndUpdate(
           { DID :  String(DID) },
           {

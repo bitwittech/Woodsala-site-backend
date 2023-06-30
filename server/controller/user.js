@@ -213,7 +213,7 @@ exports.sendVerificationLink = async (req, res) => {
 
     let regex = /^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$/;
 
-    let { email, password } = req.body;
+    let { email, password, mobile } = req.body;
 
     if (!email || email === "" || !regex.test(email))
       return res.status(203).send({
@@ -226,6 +226,14 @@ exports.sendVerificationLink = async (req, res) => {
         status: 203,
         message: "Please provide the password in payload.",
       });
+    
+    let checkTheEmail = await userDB.find({$or : [{email},{mobile}]}).count()
+
+    if(checkTheEmail > 0)
+    return res.status(203).send({
+      status: 203,
+      message: `Provided email (${email}) or mobile (${mobile}) number is already registered.`
+    });
 
     // send mail with defined transport object
     let check = await transporter.sendMail({
