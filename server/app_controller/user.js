@@ -1,6 +1,7 @@
 const { json } = require("body-parser");
 const user = require("../../database/models/user");
-const {v4: uuidV4} =require("uuid")
+const guest = require("../../database/models/guest");
+const { v4: uuidV4 } = require("uuid");
 
 exports.setAddress = async (req, res) => {
   try {
@@ -19,7 +20,6 @@ exports.setAddress = async (req, res) => {
 
     let id = Math.random().toString(36).slice(2);
 
-
     if (!CID && !DID)
       return res
         .status(203)
@@ -35,30 +35,27 @@ exports.setAddress = async (req, res) => {
     )
       return res.status(203).send({ status: 203, message: "Payload missing." });
 
-
     let query = {};
-
-    if(CID)
-    query = {CID : String(CID) }
-    else
-    query = {DID : String(DID) }
-
-
-
     let check = null;
-    check = await user.findOne(query, { address: 1 });
 
-    
+    if (CID) {
+      query = { CID: String(CID) };
+      check = await user.findOne(query, { address: 1 });
+    } else {
+      query = { DID: String(DID) };
+      check = await guest.findOne(query, { address: 1 });
+    }
+
     // console.log(check)
     if (!check && CID)
-        return res
+      return res
         .status(203)
         .send({ status: 203, message: "Please provide the valid ID." });
 
-     // this will add the address against registered customer 
+    // this will add the address against registered customer
     if (CID)
       check = await user.findOneAndUpdate(
-        { CID : String(CID) },
+        { CID: String(CID) },
         {
           address: [
             ...check.address,
@@ -76,24 +73,12 @@ exports.setAddress = async (req, res) => {
           ],
         }
       );
-      else {
-        if (!check)
-        {check = await user.find({$or:[{email},{mobile}]}).count()
-        
-        if(check > 0) return res.status(203).send(
+    else if (DID) {
+      if (!check) {
+        // this will create a new customer based on DID with new CID
+        check = await guest.findOneAndUpdate(
+          { DID: String(DID) },
           {
-            status : 203,
-            message : "Sorry email or mobile already exist.",
-            data : []
-          }
-          )
-          // creating the new CID 
-          CID = `CID-${uuidV4()}`
-          // this will create a new customer based on DID with new CID
-        check = await user.findOneAndUpdate(
-          { DID : String(DID) },
-          {
-            CID,
             DID,
             register_time: Date.now(),
             username: customer_name,
@@ -114,12 +99,11 @@ exports.setAddress = async (req, res) => {
             ],
           },
           { upsert: true, new: true }
-        );}
-      else
-      {
-        // this will save the data against the DID 
-        check = await user.findOneAndUpdate(
-          { DID :  String(DID) },
+        );
+      } else {
+        // this will save the data against the DID
+        check = await guest.findOneAndUpdate(
+          { DID: String(DID) },
           {
             address: [
               ...check.address,
@@ -137,8 +121,8 @@ exports.setAddress = async (req, res) => {
             ],
           },
           { upsert: true, new: true }
-          );
-        }
+        );
+      }
     }
     if (check)
       return res
@@ -165,19 +149,20 @@ exports.getAddress = async (req, res) => {
         .status(203)
         .send({ status: 203, message: "Please provide a valid ID." });
 
-    if(CID)
-    query = {CID : String(CID) }
-    else
-    query = {DID : String(DID) }
+    if (CID) query = { CID: String(CID) };
+    else query = { DID: String(DID) };
 
-    let data = await user.findOne(
-      query,
-      {
+    let data;
+    if (CID)
+      data = await user.findOne(query, {
         address: 1,
-        CID : 1,
-        DID : 1
-      }
-    );
+        CID: 1,
+      });
+    else if (DID)
+      data = await guest.findOne(query, {
+        address: 1,
+        DID: 1,
+      });
 
     if (data)
       return res.send({
@@ -197,40 +182,41 @@ exports.getAddress = async (req, res) => {
   }
 };
 
-exports.getCustomerDetails = async (req,res) =>{
+exports.getCustomerDetails = async (req, res) => {
   try {
-    let {DID,CID} = req.query;
+    let { DID, CID } = req.query;
 
-    if(!DID && !CID)
-    return res.status(203).send({
-      status :203,
-      message : "Missing ID.",
-      data : {}
-    })
-    
-    let query = {};
+    if (!DID && !CID)
+      return res.status(203).send({
+        status: 203,
+        message: "Missing ID.",
+        data: {},
+      });
 
-    if(CID)
-    query = {CID : String(CID) }
+    let data;
+
+    if (CID)
+      data = await user.findOne({CID})
     else
-    query = {DID : String(DID) }
+      data = await guest.findOne({DID})
 
-
-    let data = await user.findOne(query)
-
-    if(data)
-    return res.status(200).send({
-      status : 200,
-      message : "User details fetched.",
-      data
-    })
+    if (data)
+      return res.status(200).send({
+        status: 200,
+        message: "User details fetched.",
+        data,
+      });
     else
-    return res.status(200).send({
-      status : 203,
-      message : "No details found.  ",
-      data : {}
-    })
+      return res.status(200).send({
+        status: 203,
+        message: "No details found.  ",
+        data: {},
+      });
   } catch (error) {
-    
+    console.log(error)
+    return res.status(500).send({
+      status : 500,
+      message : "Something went wrong."
+    })
   }
-}
+};

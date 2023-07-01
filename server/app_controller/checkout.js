@@ -21,25 +21,22 @@ exports.getOrders = async (req, res) => {
         $match: {
           $and: [
             query,
-            { CID: { $ne: "Not Registered" } },
-            { CID: { $ne: "Not Logged In" } },
-            { CID: { $ne: "" } },
             { payment_status: true },
           ],
         },
       },
-      {
-        $project: {
-          O: 1,
-          order_time: 1,
-          CID: 1,
-          quantity: 1,
-          subTotal: 1,
-          discount: 1,
-          total: 1,
-          payment_status: 1,
-        },
-      },
+      // {
+      //   $project: {
+      //     O: 1,
+      //     order_time: 1,
+      //     CID: 1,
+      //     quantity: 1,
+      //     subTotal: 1,
+      //     discount: 1,
+      //     total: 1,
+      //     payment_status: 1,
+      //   },
+      // },
       { $skip: pageNumber > 0 ? (pageNumber - 1) * 10 : 0 },
       { $limit: parseInt(limit) || 5 },
     ]);
