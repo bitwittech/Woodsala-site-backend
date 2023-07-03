@@ -9,7 +9,7 @@ const guest = require("../../database/models/guest");
 const order = require("../../database/models/order");
 const Razorpay = require("razorpay");
 const { v4: uuidv4 } = require("uuid");
-
+const crypto = require('crypto')
 // creating the Instance for placing the payment into the Razorpay
 const razorpay = new Razorpay({
   key_id: process.env.RAZORPAY_KEY_ID,
@@ -344,18 +344,24 @@ exports.getCount = async (req, res) => {
     let CartCount = await cart.find(query).count();
     let WishCount = await wishlist.find(query).count();
 
-    if (CartCount && WishCount)
       return res.status(200).send({
         status: 200,
-        message: "Wishlist items fetched successfully.",
+        message: "Count fetched successfully.",
         data: { WishCount, CartCount },
       });
-    else
-      return res.status(203).send({
-        status: 203,
-        message: "No product found",
-        data: { WishCount, CartCount },
-      });
+
+    // if (CartCount && WishCount)
+    //   return res.status(200).send({
+    //     status: 200,
+    //     message: "Wishlist items fetched successfully.",
+    //     data: { WishCount, CartCount },
+    //   });
+    // else
+    //   return res.status(203).send({
+    //     status: 203,
+    //     message: "No product found",
+    //     data: { WishCount, CartCount },
+    //   });
   } catch (err) {
     console.log(err);
     return res
@@ -1003,7 +1009,7 @@ exports.CODCheckOut = async (req, res) => {
 
 exports.UPICheckOut = async (req, res) => {
   try {
-    // here I need to add the UPI method for the COD upto the Limit
+    // NOTE : here I need to add the UPI method for the COD upto the Limit
 
     let { CID, DID, order_id } = req.body;
 
@@ -1078,6 +1084,7 @@ exports.UPICheckOut = async (req, res) => {
 
 exports.verifyPayment = async (req, res) => {
   try {
+    console.log(req.body)
     const {
       order_id,
       razorpay_payment_id,
@@ -1125,11 +1132,13 @@ exports.verifyPayment = async (req, res) => {
 
     if (payment_ID_check) {
       // verifying the signature is valid or not
-      const isValidSignature =
-        razorpay.utils.verifyPaymentSignature(attributes);
+      // Generate the signature for verification
+     const shasum = crypto.createHmac("sha256", process.env.RAZORPAY_SECRET); // always put Secret Code as a code salt
+    shasum.update(`${razorpay_order_id}|${razorpay_payment_id}`);
+    const digest = shasum.digest("hex");
 
-      if (isValidSignature) {
-        checkOrder = await order.findOneUpdate(
+      if (digest === razorpay_signature) {
+        checkOrder = await order.findOneAndUpdate(
           { O: order_id },
           {
             payment_status: true,
@@ -1137,6 +1146,10 @@ exports.verifyPayment = async (req, res) => {
             pay_method_advance: "UPI",
           }
         );
+
+        // clean up the cart or empty the cart
+        await cart.deleteMany({query}) 
+
 
         if (!checkOrder)
           return res.status(200).send({
@@ -1151,8 +1164,7 @@ exports.verifyPayment = async (req, res) => {
       } else {
         return res.status(200).send({
           status: 200,
-          message: "Sorry, payment failed.",
-          reason: isValidSignature,
+          message: "Sorry, payment failed due invalid or tampered signature.",
         });
       }
     } else {
