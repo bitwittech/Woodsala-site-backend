@@ -1086,15 +1086,17 @@ exports.verifyPayment = async (req, res) => {
   try {
     console.log(req.body)
     const {
+      CID,
+      DID,
       order_id,
       razorpay_payment_id,
       razorpay_order_id,
       razorpay_signature,
     } = req.body;
 
-    // console.log(req.body)
-
+    
     if (
+      (!CID &&!DID ) ||
       !order_id ||
       !razorpay_order_id ||
       !razorpay_payment_id ||
@@ -1104,6 +1106,11 @@ exports.verifyPayment = async (req, res) => {
         status: 203,
         message: "Missing payload.",
       });
+
+    
+      let query = {};
+      if (CID) query = { CID };
+      else query = { DID };  
 
     // Verify the payment using Razorpay API
     const attributes = {
