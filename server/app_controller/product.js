@@ -1,7 +1,13 @@
+require('dotenv').config()
+
 const categories = require("../../database/models/categories");
 const product = require("../../database/models/product");
 const catalog = require("../../database/models/catalog");
-const review = require("../../database/models/review");
+const reviewDB = require("../../database/models/review");
+const otp = require("../../database/models/verify");
+
+// nodemalier instance
+const transporter = require("../middleware/email_instance");
 // const review = require("../../database/models/");
 
 exports.getProduct = async (req, res) => {
@@ -271,8 +277,29 @@ exports.getProductDetails = async (req, res) => {
         $lookup: {
           from: "reviews",
           localField: "SKU",
+          foreignField: "product_id",
+          as: "reviews",
+        },
+      },
+      {
+        $addFields: {
+          totalReviews: { $size: "$reviews" }
+        }
+      },
+      {
+        $unwind: "$reviews"
+      },
+      {
+        $addFields: {
+          averageRating: { $avg: {$toInt : "$reviews.rating"} },
+        }
+      },
+      {
+        $lookup: {
+          from: "reviews",
+          localField: "SKU",
           pipeline: [
-            {
+          { 
               $project: {
                 product_id: 1,
                 product_title: 1,
@@ -283,6 +310,8 @@ exports.getProductDetails = async (req, res) => {
                 _id: 1,
               },
             },
+            {$sort : {date : -1} },
+            {$limit : 5 }
           ],
           foreignField: "product_id",
           as: "reviews",
@@ -328,6 +357,7 @@ exports.getProductDetails = async (req, res) => {
           },
         },
       },
+  
     ]);
 
     // sum of discount limit
@@ -367,12 +397,12 @@ exports.fetchVariants = async (req, res) => {
   try {
     let { ACIN } = req.query;
 
-    if(!ACIN)
-    return res.status(203).send({
-      status : "203",
-      message : "Missing Payload.",
-      data : []
-    })
+    if (!ACIN)
+      return res.status(203).send({
+        status: "203",
+        message: "Missing Payload.",
+        data: [],
+      });
 
     let { CID, DID } = req.query;
 
@@ -382,58 +412,59 @@ exports.fetchVariants = async (req, res) => {
     else query_user = ["$DID", DID];
 
     let variants = await product.aggregate([
-      {$match : { ACIN: ACIN } },
-      {$project : {
-        _id: 1,
-        SKU: 1,
-        primary_material: 1,
-        product_title: 1,
-        product_image: 1,
-        category_name: 1,
-      }},
+      { $match: { ACIN: ACIN } },
+      {
+        $project: {
+          _id: 1,
+          SKU: 1,
+          primary_material: 1,
+          product_title: 1,
+          product_image: 1,
+          category_name: 1,
+        },
+      },
 
-    {
-      $lookup: {
-        from: "wishlists",
-        let: { product_id: "$SKU" },
-        pipeline: [
-          {
-            $match: {
-              $expr: {
-                $and: [
-                  { $eq: ["$product_id", "$$product_id"] },
-                  { $eq: query_user },
-                ],
+      {
+        $lookup: {
+          from: "wishlists",
+          let: { product_id: "$SKU" },
+          pipeline: [
+            {
+              $match: {
+                $expr: {
+                  $and: [
+                    { $eq: ["$product_id", "$$product_id"] },
+                    { $eq: query_user },
+                  ],
+                },
               },
             },
-          },
-          {
-            $project: {
-              _id: 0,
-              CID: 0,
-              product_id: 0,
-              DID: 0,
-              __v: 0,
-              quantity: 0,
+            {
+              $project: {
+                _id: 0,
+                CID: 0,
+                product_id: 0,
+                DID: 0,
+                __v: 0,
+                quantity: 0,
+              },
             },
-          },
-        ],
-        as: "wishlist",
+          ],
+          as: "wishlist",
+        },
       },
-    },
-    {
-      $addFields: {
-        isWishlist: {
-          $cond: {
-            if: { $eq: [{ $size: "$wishlist" }, 0] },
-            then: false,
-            else: true,
+      {
+        $addFields: {
+          isWishlist: {
+            $cond: {
+              if: { $eq: [{ $size: "$wishlist" }, 0] },
+              then: false,
+              else: true,
+            },
           },
         },
       },
-    },
-    ]
-    );
+    ]);
 
     if (variants.length > 1) {
       res.send({
@@ -556,7 +587,6 @@ exports.getRelatedProduct = async (req, res) => {
         data: [],
       });
 
-
     let { CID, DID } = req.query;
 
     let query_user = [];
@@ -586,46 +616,46 @@ exports.getRelatedProduct = async (req, res) => {
           category_name: { $first: "$category_name" },
         },
       },
-    {
-      $lookup: {
-        from: "wishlists",
-        let: { product_id: "$SKU" },
-        pipeline: [
-          {
-            $match: {
-              $expr: {
-                $and: [
-                  { $eq: ["$product_id", "$$product_id"] },
-                  { $eq: query_user },
-                ],
+      {
+        $lookup: {
+          from: "wishlists",
+          let: { product_id: "$SKU" },
+          pipeline: [
+            {
+              $match: {
+                $expr: {
+                  $and: [
+                    { $eq: ["$product_id", "$$product_id"] },
+                    { $eq: query_user },
+                  ],
+                },
               },
             },
-          },
-          {
-            $project: {
-              _id: 0,
-              CID: 0,
-              product_id: 0,
-              DID: 0,
-              __v: 0,
-              quantity: 0,
+            {
+              $project: {
+                _id: 0,
+                CID: 0,
+                product_id: 0,
+                DID: 0,
+                __v: 0,
+                quantity: 0,
+              },
             },
-          },
-        ],
-        as: "wishlist",
+          ],
+          as: "wishlist",
+        },
       },
-    },
-    {
-      $addFields: {
-        isWishlist: {
-          $cond: {
-            if: { $eq: [{ $size: "$wishlist" }, 0] },
-            then: false,
-            else: true,
+      {
+        $addFields: {
+          isWishlist: {
+            $cond: {
+              if: { $eq: [{ $size: "$wishlist" }, 0] },
+              then: false,
+              else: true,
+            },
           },
         },
       },
-    },
       { $limit: parseInt(limit) || 8 },
     ]);
 
@@ -650,3 +680,163 @@ exports.getRelatedProduct = async (req, res) => {
     });
   }
 };
+
+// ==================== Review product
+
+// for adding a review
+exports.addReview = async (req, res) => {
+  try {
+    let {reviewer_name,reviewer_email,otp_code,review,product_id} = req.body;
+
+    if(!reviewer_name || !reviewer_email || !otp_code || !review || !product_id)
+    return res.status(203).send({
+      status : 203,
+      message : "Missing payload !!!"
+    })
+
+    let checkOtp = await otp.findOne({$and : [{assignTo : reviewer_email},{otp : otp_code},{status : false}]})
+
+    if(checkOtp)
+    {
+      await otp.findOneAndUpdate({$and : [{assignTo : reviewer_email},{otp : otp_code},{status : false}]},{status : true})
+    }
+    else
+      return res.status(203).send({
+        status : 203,
+        message : "Please provide the valid otp and email !!!"
+      })
+
+
+    // console.log("Files >>>", req.files);
+    // console.log("Files >>>", req.body);
+
+    let imageURLs = [];
+    let videoURLs = [];
+
+    if (req.files["review_images"]) {
+      if (req.files["review_images"].length > 0) {
+        req.files["review_images"].map((file) => {
+          if (file.mimetype === "video/mp4")
+            return videoURLs.push(`${process.env.IMG_URL}${file.path}`);
+          return imageURLs.push(`${process.env.IMG_URL}${file.path}`);
+        });
+      }
+    }
+
+    // req.body.review = JSON.parse(req.body.review);
+
+    req.body.review_images = imageURLs;
+    req.body.review_videos = videoURLs;
+
+    // console.log("Final Body >>>", req.body);
+
+    const data = reviewDB(req.body);
+    const response = await data.save();
+
+    if (response) return res.status(200).send({ status : 200, message: "Review added successfully." });
+    else return res.status(203).send({ status : 203, message: "Something went wrong." });
+
+  } catch (error) {
+    console.log("ERROR>>>", error);
+    return res.status(500).send({
+      status : 500,
+      message: "Something went wrong."
+    });
+  }
+};
+
+// for listing  reviews
+exports.listReview = async (req, res) => {
+  try {
+
+    let {product_id,limit} = req.query;
+
+    let query = {product_id}
+
+    if (!product_id)
+    query = {}
+    
+
+    let data = await reviewDB.find(query).sort({data : -1}).limit(parseInt(limit) || 10);
+
+    if(data)
+      return res.status(200).send({status : 200, message : `Reviews fetched successfully.`,data})
+    
+  } catch (error) {
+    console.log(error)
+    return res.status(500).send({status : 500, message : "Something went wrong !!!" })
+  }
+};
+
+exports.verifyReview = async (req, res) => {
+  try {
+    let { reviewer_email, reviewer_name } = req.body;
+
+    if (!reviewer_email || !reviewer_name)
+      return res.status(203).send({
+        status: 203,
+        message: "Missing Payload !!!",
+      });
+
+    const reqx =
+    /^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9-]+(?:\.[a-zA-Z0-9-]+)*$/;
+
+  if (!reqx.test(reviewer_email))
+    return res.status(203).send({
+      status: 203,
+      message: "Please provide the valid email address !!!",
+    });
+      
+    // inserting the OTP 
+    const otpCode = Math.floor(100000 + Math.random() * 900000);
+    
+    let insertOtp = otp({
+      otp : otpCode,
+      assignTo : reviewer_email
+    })
+
+    insertOtp = await insertOtp.save();
+
+    if(!insertOtp)
+    return res.status(203).send({
+      status: 203,
+      message: "Sorry, APIs getting out of order !!!",
+    });
+
+    // send mail with defined transport object
+    let response = await transporter.sendMail({
+      from: "woodshala@gmail.com", // sender address
+      to: `${reviewer_email}`, // list of receivers
+      subject: "Email Verification from Woodsala !!!", // Subject line
+      html: `<h1>Thanks for your valuable review us !!!</h1>
+        <p>Hello ${reviewer_name}, your verification OTP down below.</p>
+        <h1 style = {backgroundColor = 'red'}>${otpCode}</h1>
+        `, // html body
+    });
+
+    if (response)
+      return res
+        .status(200)
+        .send({ status: 200, message: "Verification mail has been sent !!! " });
+    else
+      return res.status(203).send({
+        status: 203,
+        message: "Facing an issue while sending the mail.",
+      });
+  } catch (err) {
+    console.log("Error >> ", err);
+    res.status(500).send({
+      status: 500,
+      message: "Something went wrong !!!",
+    });
+  }
+};
+
+
+// async function lets(){
+//   console.log(await otp.find())
+// }
+
+// lets()
+
+

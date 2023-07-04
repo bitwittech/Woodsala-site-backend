@@ -152,17 +152,62 @@ exports.getAddress = async (req, res) => {
     if (CID) query = { CID: String(CID) };
     else query = { DID: String(DID) };
 
+    // query, {
+    //   address: 1,
+    //   CID: 1,
+    // }
+
     let data;
     if (CID)
-      data = await user.findOne(query, {
-        address: 1,
-        CID: 1,
-      });
+      data = await user.aggregate([{
+        $match : query
+      },{
+        $project : {
+          _id : 1,
+          address : 1, 
+        }
+      },
+      {
+        $addFields: {
+          address: {
+            $map: {
+              input: "$address",
+              as: "address",
+              in: {
+                $mergeObjects: [
+                  "$$address",
+                  { addressString: { $concat: ["$$address.address", ",", "$$address.city", ",", "$$address.state",", ", "$$address.pincode"] } }
+                ]
+              }
+            }
+          }
+        }
+      }]);
     else if (DID)
-      data = await guest.findOne(query, {
-        address: 1,
-        DID: 1,
-      });
+      data = await guest.aggregate([{
+        $match : query
+      },{
+        $project : {
+          _id : 1,
+          address : 1, 
+        }
+      },
+      {
+        $addFields: {
+          address: {
+            $map: {
+              input: "$address",
+              as: "address",
+              in: {
+                $mergeObjects: [
+                  "$$address",
+                  { addressString: { $concat: ["$$address.address", ",", "$$address.city", ",", "$$address.state",", ", "$$address.pincode"] } }
+                ]
+              }
+            }
+          }
+        }
+      }]);
 
     if (data)
       return res.send({

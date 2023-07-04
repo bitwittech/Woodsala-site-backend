@@ -9,7 +9,7 @@ const guest = require("../../database/models/guest");
 const order = require("../../database/models/order");
 const Razorpay = require("razorpay");
 const { v4: uuidv4 } = require("uuid");
-const crypto = require('crypto')
+const crypto = require("crypto");
 // creating the Instance for placing the payment into the Razorpay
 const razorpay = new Razorpay({
   key_id: process.env.RAZORPAY_KEY_ID,
@@ -148,7 +148,7 @@ exports.getCartItem = async (req, res) => {
         ...row,
         product_image: row.product[0].product_image,
         product_title: row.product[0].product_title,
-        selling_price: row.product[0].selling_price ,
+        selling_price: row.product[0].selling_price,
       };
       delete row.product;
       return row;
@@ -300,7 +300,7 @@ exports.getWishlistItem = async (req, res) => {
         ...row,
         product_image: row.product[0].product_image,
         product_title: row.product[0].product_title,
-        selling_price: row.product[0].selling_price ,
+        selling_price: row.product[0].selling_price,
       };
       delete row.product;
       return row;
@@ -344,11 +344,11 @@ exports.getCount = async (req, res) => {
     let CartCount = await cart.find(query).count();
     let WishCount = await wishlist.find(query).count();
 
-      return res.status(200).send({
-        status: 200,
-        message: "Count fetched successfully.",
-        data: { WishCount, CartCount },
-      });
+    return res.status(200).send({
+      status: 200,
+      message: "Count fetched successfully.",
+      data: { WishCount, CartCount },
+    });
 
     // if (CartCount && WishCount)
     //   return res.status(200).send({
@@ -384,9 +384,63 @@ exports.getPromoCode = async (req, res) => {
       expiry: 1,
       coupon_description: 1,
     };
+    // find({ coupon_code: code }, fields)
     let list;
-    if (code) list = await coupon.find({ coupon_code: code }, fields);
-    else list = await coupon.find({}, fields);
+    if (code)
+      list = await coupon.aggregate([
+        { $match: { coupon_code: code } },
+        {
+          $project: {
+            customer_ids: 1,
+            coupon_code: 1,
+            coupon_type: 1,
+            flat_amount: 1,
+            times: 1,
+            off: 1,
+            valid_from: 1,
+            expiry: 1,
+            coupon_description: 1,
+          },
+        },
+        {
+          $addFields: {
+            coupon_string: {
+              $cond: {
+                if: { $eq: ["$coupon_type", "FLAT"] },
+                then: { $concat: ["Flat ", { $toString: "$flat_amount" }, "Rs"] },
+                else: { $concat: ["Off ", { $toString: "$off" }, "%"] }
+              },
+            },
+          },
+        },
+      ]);
+    else list = await coupon.aggregate([
+      { $match: {} },
+      {
+        $project: {
+          customer_ids: 1,
+          coupon_code: 1,
+          coupon_type: 1,
+          flat_amount: 1,
+          times: 1,
+          off: 1,
+          valid_from: 1,
+          expiry: 1,
+          coupon_description: 1,
+        },
+      },
+      {
+        $addFields: {
+          coupon_string: {
+            $cond: {
+              if: { $eq: ["$coupon_type", "FLAT"] },
+              then: { $concat: ["Flat ", { $toString: "$flat_amount" }, "Rs"] },
+              else: { $concat: ["Off ", { $toString: "$off" }, "%"] }
+            },
+          },
+        },
+      },
+    ]);
 
     if (list)
       return res.status(200).send({
@@ -633,48 +687,48 @@ async function CreateOrder(CID, DID, items, promo_id, address_id) {
   try {
     let O = await GetOrderID();
 
-    if(!address_id)
-    return {
-      status : 203,
-      message : "Missing address id."
-    }
+    if (!address_id)
+      return {
+        status: 203,
+        message: "Missing address id.",
+      };
 
     let query = {};
 
-    if (CID) query = {CID};
-    else query = {DID};
+    if (CID) query = { CID };
+    else query = { DID };
 
     let customer_address;
-    if(address_id && CID )
-    customer_address = await user.aggregate([
-      { $match: query },
-      {
-        $project: {
-          address: {
-            $filter: {
-              input: "$address",
-              as: "address",
-              cond: { $eq: ["$$address.id", address_id] }, // Specify the condition to match the desired object
+    if (address_id && CID)
+      customer_address = await user.aggregate([
+        { $match: query },
+        {
+          $project: {
+            address: {
+              $filter: {
+                input: "$address",
+                as: "address",
+                cond: { $eq: ["$$address.id", address_id] }, // Specify the condition to match the desired object
+              },
             },
           },
         },
-      },
-    ]);
-    else if(address_id && DID )
-    customer_address = await guest.aggregate([
-      { $match: query },
-      {
-        $project: {
-          address: {
-            $filter: {
-              input: "$address",
-              as: "address",
-              cond: { $eq: ["$$address.id", address_id] }, // Specify the condition to match the desired object
+      ]);
+    else if (address_id && DID)
+      customer_address = await guest.aggregate([
+        { $match: query },
+        {
+          $project: {
+            address: {
+              $filter: {
+                input: "$address",
+                as: "address",
+                cond: { $eq: ["$$address.id", address_id] }, // Specify the condition to match the desired object
+              },
             },
           },
         },
-      },
-    ]);
+      ]);
 
     // console.log(customer_address)
 
@@ -683,14 +737,14 @@ async function CreateOrder(CID, DID, items, promo_id, address_id) {
         status: 203,
         message: "My be the provided CID or DID or  address id not found.",
       };
-    else 
-    {
-      if(customer_address[0].address.length > 0)
-      customer_address = customer_address[0].address[0];
-      else  return {
-        status: 203,
-        message: "My be the provided CID or DID or  address id not found.",
-      };
+    else {
+      if (customer_address[0].address.length > 0)
+        customer_address = customer_address[0].address[0];
+      else
+        return {
+          status: 203,
+          message: "My be the provided CID or DID or  address id not found.",
+        };
     }
 
     let promoData;
@@ -729,7 +783,6 @@ async function CreateOrder(CID, DID, items, promo_id, address_id) {
         ...items,
         coupon_discount: 0,
       };
-
 
     // console.log("2>>",customer_address)
 
@@ -799,112 +852,111 @@ async function UpdateOrder(CID, DID, items, promo_id, address_id, order_id) {
     // promo code identification
     if (promoData) {
       if (promoData.coupon_type === "FLAT")
-      items = {
+        items = {
           ...items,
           coupon_discount: promoData.flat_amount,
           total: items.total - promoData.flat_amount,
         };
-        else if (promoData.coupon_type === "OFF(%)")
+      else if (promoData.coupon_type === "OFF(%)")
         items = {
           ...items,
           coupon_discount: (items.total / 100) * promoData.off,
           total: items.total - (items.total / 100) * promoData.off,
         };
-        else
+      else
         items = {
           ...items,
           coupon_discount: 0,
         };
-      } else
+    } else
       items = {
         ...items,
         coupon_discount: 0,
       };
-    
-    let customer_address;
-    if(address_id && CID )
-    customer_address = await user.aggregate([
-      { $match: query },
-      {
-        $project: {
-          address: {
-            $filter: {
-              input: "$address",
-              as: "address",
-              cond: { $eq: ["$$address.id", address_id] }, // Specify the condition to match the desired object
-            },
-          },
-        },
-      },
-    ]);
-    else if(address_id && DID )
-    customer_address = await guest.aggregate([
-      { $match: query },
-      {
-        $project: {
-          address: {
-            $filter: {
-              input: "$address",
-              as: "address",
-              cond: { $eq: ["$$address.id", address_id] }, // Specify the condition to match the desired object
-            },
-          },
-        },
-      },
-    ]);
 
+    let customer_address;
+    if (address_id && CID)
+      customer_address = await user.aggregate([
+        { $match: query },
+        {
+          $project: {
+            address: {
+              $filter: {
+                input: "$address",
+                as: "address",
+                cond: { $eq: ["$$address.id", address_id] }, // Specify the condition to match the desired object
+              },
+            },
+          },
+        },
+      ]);
+    else if (address_id && DID)
+      customer_address = await guest.aggregate([
+        { $match: query },
+        {
+          $project: {
+            address: {
+              $filter: {
+                input: "$address",
+                as: "address",
+                cond: { $eq: ["$$address.id", address_id] }, // Specify the condition to match the desired object
+              },
+            },
+          },
+        },
+      ]);
 
     if (customer_address.length < 1)
       return {
         status: 203,
         message: "My be the provided CID or DID or  address id not found.",
       };
-    else 
-    {
-      if(customer_address[0].address.length > 0)
-      customer_address = customer_address = customer_address[0].address[0];
-      else  return {
-        status: 203,
-        message: "My be the provided CID or DID or  address id not found.",
-      };
+    else {
+      if (customer_address[0].address.length > 0)
+        customer_address = customer_address = customer_address[0].address[0];
+      else
+        return {
+          status: 203,
+          message: "My be the provided CID or DID or  address id not found.",
+        };
     }
 
-    if(address_id)
-    data = {
-      O: order_id,
-      customer_name: customer_address.customer_name,
-      customer_email: customer_address.email,
-      customer_mobile: customer_address.mobile,
-      country: "India",
-      pincode: customer_address.pincode,
-      city: customer_address.city,
-      state: customer_address.state,
-      shipping: customer_address.address,
-      sales_person: "",
-      billing: customer_address.address,
-      quantity: items.product.quantity,
-      discount_per_product: items.product.discount_per_product,
-      product_price: items.product.product_price,
-      items: items.product.items,
-      subTotal: items.subTotal,
-      discount: items.discount,
-      total: items.total,
-      apartment: customer_address.apartment,
-      landmark: customer_address.landmark,
-      coupon_code: promo_id,
-    };
+    if (address_id)
+      data = {
+        O: order_id,
+        customer_name: customer_address.customer_name,
+        customer_email: customer_address.email,
+        customer_mobile: customer_address.mobile,
+        country: "India",
+        pincode: customer_address.pincode,
+        city: customer_address.city,
+        state: customer_address.state,
+        shipping: customer_address.address,
+        sales_person: "",
+        billing: customer_address.address,
+        quantity: items.product.quantity,
+        discount_per_product: items.product.discount_per_product,
+        product_price: items.product.product_price,
+        items: items.product.items,
+        subTotal: items.subTotal,
+        discount: items.discount,
+        total: items.total,
+        apartment: customer_address.apartment,
+        landmark: customer_address.landmark,
+        coupon_code: promo_id,
+      };
     else
-    data = {
-      O: order_id,
-      quantity: items.product.quantity,
-      discount_per_product: items.product.discount_per_product,
-      product_price: items.product.product_price,
-      items: items.product.items,
-      subTotal: items.subTotal,
-      discount: items.discount,
-      total: items.total,
-      coupon_code: promo_id,
-    };
+      data = {
+        O: order_id,
+        quantity: items.product.quantity,
+        discount_per_product: items.product.discount_per_product,
+        product_price: items.product.product_price,
+        items: items.product.items,
+        subTotal: items.subTotal,
+        discount: items.discount,
+        total: items.total,
+        coupon_code: promo_id,
+      };
     return {
       status: 200,
       message: "Order created successfully.",
@@ -968,8 +1020,7 @@ exports.CODCheckOut = async (req, res) => {
     );
 
     //  empty the cart
-    await cart.deleteMany({query}) 
-
+    await cart.deleteMany({ query });
 
     // console.log(order_data)
 
@@ -1056,7 +1107,7 @@ exports.UPICheckOut = async (req, res) => {
     // getting the order details and recipt details from it
     const order_place = await razorpay.orders.create(options);
 
-    console.log(order_place);
+    // console.log(order_place);
     if (order_place) {
       return res.status(200).send({
         status: 200,
@@ -1084,7 +1135,7 @@ exports.UPICheckOut = async (req, res) => {
 
 exports.verifyPayment = async (req, res) => {
   try {
-    console.log(req.body)
+    console.log(req.body);
     const {
       CID,
       DID,
@@ -1094,9 +1145,8 @@ exports.verifyPayment = async (req, res) => {
       razorpay_signature,
     } = req.body;
 
-    
     if (
-      (!CID &&!DID ) ||
+      (!CID && !DID) ||
       !order_id ||
       !razorpay_order_id ||
       !razorpay_payment_id ||
@@ -1107,17 +1157,9 @@ exports.verifyPayment = async (req, res) => {
         message: "Missing payload.",
       });
 
-    
-      let query = {};
-      if (CID) query = { CID };
-      else query = { DID };  
-
-    // Verify the payment using Razorpay API
-    const attributes = {
-      razorpay_payment_id,
-      razorpay_order_id,
-      razorpay_signature,
-    };
+    let query = {};
+    if (CID) query = { CID };
+    else query = { DID };
 
     // check for the valid order ID
     let checkOrder = await order
@@ -1140,9 +1182,9 @@ exports.verifyPayment = async (req, res) => {
     if (payment_ID_check) {
       // verifying the signature is valid or not
       // Generate the signature for verification
-     const shasum = crypto.createHmac("sha256", process.env.RAZORPAY_SECRET); // always put Secret Code as a code salt
-    shasum.update(`${razorpay_order_id}|${razorpay_payment_id}`);
-    const digest = shasum.digest("hex");
+      const shasum = crypto.createHmac("sha256", process.env.RAZORPAY_SECRET); // always put Secret Code as a code salt
+      shasum.update(`${razorpay_order_id}|${razorpay_payment_id}`);
+      const digest = shasum.digest("hex");
 
       if (digest === razorpay_signature) {
         checkOrder = await order.findOneAndUpdate(
@@ -1155,8 +1197,7 @@ exports.verifyPayment = async (req, res) => {
         );
 
         // clean up the cart or empty the cart
-        await cart.deleteMany({query}) 
-
+        await cart.deleteMany({ query });
 
         if (!checkOrder)
           return res.status(200).send({

@@ -1,7 +1,7 @@
 const mongoose = require("mongoose");
 
 const review = mongoose.Schema({
-  CID: { type: String },
+  CID: { type: String, default  : "" },
   product_id: { type: String },
   rating: { type: String },
   review: { type: String, default: "" },
@@ -14,6 +14,6 @@ const review = mongoose.Schema({
   reviewer_email: { type: String },
   hide: { type: Boolean, default: true },
   date: { type: Date, default: Date.now() },
-});
+},{timestamps : true});
 
 module.exports = mongoose.model("review", review);

@@ -58,4 +58,9 @@ route.get("/getOrder",checkout.getOrders)
 // user 
 route.get("/getUserDetails",user.getCustomerDetails)
 
+// review 
+route.post("/addReview",upload,product.addReview)
+route.post("/verifyReview",upload,product.verifyReview)
+route.get("/listReviews",product.listReview)
+
 module.exports = route 
