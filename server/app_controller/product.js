@@ -203,8 +203,9 @@ exports.getProductDetails = async (req, res) => {
   try {
     // Consider size, material, range,
 
-    let { CID, DID } = req.query;
+    let { CID, DID,SKU } = req.query;
 
+    // console.log(CID, DID,SKU)
     let query_user = [];
 
     if (CID) query_user = ["$CID", CID];
@@ -212,7 +213,7 @@ exports.getProductDetails = async (req, res) => {
 
     // fetching the product
     let productDetail = await product.aggregate([
-      { $match: { SKU: req.query.SKU } },
+      { $match: { SKU: SKU } },
       {
         $group: {
           _id: "$_id",
@@ -286,14 +287,14 @@ exports.getProductDetails = async (req, res) => {
           totalReviews: { $size: "$reviews" }
         }
       },
-      {
-        $unwind: "$reviews"
-      },
-      {
-        $addFields: {
-          averageRating: { $avg: {$toInt : "$reviews.rating"} },
-        }
-      },
+      // {
+      //   $unwind: "$reviews"
+      // },
+      // {
+      //   $addFields: {
+      //     averageRating: { $avg: {$toInt : "$reviews.rating"} },
+      //   }
+      // },
       {
         $lookup: {
           from: "reviews",
@@ -314,7 +315,7 @@ exports.getProductDetails = async (req, res) => {
             {$limit : 5 }
           ],
           foreignField: "product_id",
-          as: "reviews",
+          as: "review",
         },
       },
       {
@@ -359,6 +360,14 @@ exports.getProductDetails = async (req, res) => {
       },
   
     ]);
+
+
+    if (productDetail.length < 1)
+      return res.send({
+        status: 200,
+        message: ` ${req.query.SKU} No Product details found.`,
+        data: productDetail,
+      });   
 
     // sum of discount limit
     if (productDetail[0].categories[0]) {
@@ -757,7 +766,9 @@ exports.listReview = async (req, res) => {
     query = {}
     
 
-    let data = await reviewDB.find(query).sort({data : -1}).limit(parseInt(limit) || 10);
+    // console.log(query)
+
+    let data = await reviewDB.find({...query}).sort({data : -1}).limit(parseInt(limit) || 10);
 
     if(data)
       return res.status(200).send({status : 200, message : `Reviews fetched successfully.`,data})

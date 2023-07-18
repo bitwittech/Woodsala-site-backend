@@ -1,8 +1,11 @@
 require("dotenv").config();
 
 const JWT = require("jsonwebtoken");
-const bcrypt = require("bcrypt");
+// const bcrypt = require("bcrypt");
 
+// crypt
+const Crypt = require("cryptr");
+const crypt = new Crypt(process.env.PASS_Secrete);
 
 // middleware For Authentication
 
@@ -36,14 +39,8 @@ exports.encode=(req, res, next)=> {
         .send({ error_massage: "Please enter all the required felids." });
   
     // code to hash the password
-  
-    bcrypt.genSalt(saltRounds, (err, salt) => {
-      bcrypt.hash(req.body.password, salt, function (err, hash) {
-        // async (req,res)(">>>>>", hash);
-        if (hash !== null) {
-          req.body.password = hash;
-          next();
-        }
-      });
-    });
+    req.body.password = crypt.encrypt(req.body.password);
+
+    next()
+
   }

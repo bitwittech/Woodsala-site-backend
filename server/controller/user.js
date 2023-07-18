@@ -8,8 +8,12 @@ const sdk = require("api")("@servetel/v1.0#14z732fkuc911ee");
 
 // DB modules
 const userDB = require("../../database/models/user");
-const { env } = require("process");
+// const { env } = require("process");
 
+
+// crypt
+const Crypt = require("cryptr");
+const crypt = new Crypt(process.env.PASS_Secrete);
 // ================================================= Apis for User =======================================================
 //==============================================================================================================================
 
@@ -43,7 +47,7 @@ exports.register = async (req, res) => {
       });
 
     // check for the duplicate entries
-    let count = await userDB.find({$or : [{email},{mobile},{password}]}).count()
+    let count = await userDB.find({$or : [{email},{mobile}]}).count()
 
     if(count > 0)
     return res.status(203).send({
@@ -100,9 +104,8 @@ exports.login = async (req, res) => {
       { _id: 0, username: 1, email: 1, CID: 1, DID: 1, password: 1 }
     );
     if (data) {
-      bcrypt.compare(password, data.password, (err, result) =>
-        check(err, result, data, res)
-      );
+      let pass = crypt.decrypt(data.password);
+        check(pass === password, data, res)
     } else {
       return res.status(203).send({
         status: 203,
@@ -120,7 +123,7 @@ exports.login = async (req, res) => {
 
 // check the password is correct or not
 
-function check(err, result, userData, res) {
+function check(result, userData, res) {
   if (result) {
     let token = generateJWT(userData.toJSON());
     return res.send({
