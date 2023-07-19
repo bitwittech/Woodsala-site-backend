@@ -1,4 +1,4 @@
-require('dotenv').config()
+require("dotenv").config();
 
 const categories = require("../../database/models/categories");
 const product = require("../../database/models/product");
@@ -12,16 +12,28 @@ const transporter = require("../middleware/email_instance");
 
 exports.getProduct = async (req, res) => {
   try {
-    let filter = {};
+    let {
+      CID,
+      DID,
+      limit,
+      pageNumber,
+      category_name,
+      product_title,
+      price,
+      length,
+      breadth,
+      height,
+      material,
+    } = req.body;
 
-    let { CID, DID } = req.query;
+    console.log(req.body)
 
     let query_user = [];
 
     if (CID) query_user = ["$CID", CID];
     else query_user = ["$DID", DID];
 
-    console.log(query_user);
+    // console.log(query_user);
 
     if (req.query.filter) {
       filter = JSON.parse(req.query.filter);
@@ -31,62 +43,63 @@ exports.getProduct = async (req, res) => {
     let query = {};
     let filterArray = [];
 
-    if (req.query.category_name)
+    if (category_name)
       filterArray.push({
-        category_name: { $regex: req.query.category_name, $options: "i" },
+        category_name: { $regex: category_name, $options: "i" },
       });
 
-    if (req.query.product_title)
+    if (product_title)
       filterArray.push({
         product_title: {
-          $regex: req.query.product_title.includes(")")
-            ? req.query.product_title.split(")")[1]
-            : req.query.product_title,
+          $regex: product_title.includes(")")
+            ? product_title.split(")")[1]
+            : product_title,
           $options: "i",
         },
       });
 
-    if (filter.price)
+    if (price) {
       filterArray.push({
         $and: [
-          { selling_price: { $gt: filter.price[0] } },
-          { selling_price: { $lt: filter.price[1] } },
+          { selling_price: { $gte: price.min } },
+          { selling_price: { $lte: price.max } },
         ],
       });
-
-    if (filter.length)
+    }
+    if (length) {
       filterArray.push({
         $and: [
-          { length_main: { $gt: filter.length[0] } },
-          { length_main: { $lt: filter.length[1] } },
+          { length_main: { $gte: length.min } },
+          { length_main: { $lte: length.max } },
         ],
       });
+    }
 
-    if (filter.breadth)
+    if (breadth) {
       filterArray.push({
         $and: [
-          { breadth: { $gt: filter.breadth[0] } },
-          { breadth: { $lt: filter.breadth[1] } },
+          { breadth: { $gte: breadth.min } },
+          { breadth: { $lte: breadth.max } },
         ],
       });
-
-    if (filter.height)
+    }
+    if (height) {
       filterArray.push({
         $and: [
-          { height: { $gt: filter.height[0] } },
-          { height: { $lt: filter.height[1] } },
+          { height: { $gte: height.min } },
+          { height: { $lte: height.max } },
         ],
       });
-
-    if (filter.material && filter.material.length > 0) {
+    }
+    if (material && material.length > 0) {
       filterArray.push({
-        $or: filter.material.map((val) => {
+        $or: material.map((val) => {
           return { primary_material: { $regex: val, $options: "i" } };
         }),
       });
     }
 
-    if (filterArray.length > 0) query = { $or: filterArray };
+    if (filterArray.length > 0) query = { $and: filterArray };
 
     // final aggregation computing
     let data = await product.aggregate([
@@ -97,11 +110,31 @@ exports.getProduct = async (req, res) => {
           product_title: { $first: "$product_title" },
           product_image: { $first: "$product_image" },
           featured_image: { $first: "$featured_image" },
+          length : {$first : "$length_main"},
+          breadth : {$first : "$breadth"},
+          height : {$first : "$height"},
+          primary_material: { $first: "$primary_material" },
           product_description: { $first: "$product_description" },
           selling_price: { $first: "$selling_price" },
           discount_limit: { $first: "$discount_limit" },
           SKU: { $first: "$SKU" },
           category_name: { $first: "$category_name" },
+        },
+      },
+      {
+        $lookup: {
+          from: "primarymaterials",
+          localField: "primary_material",
+          pipeline: [
+            {
+              $group: {
+                _id: "$_id",
+                name: { $first: "$primaryMaterial_name" },
+              },
+            },
+          ],
+          foreignField: "primaryMaterial_name",
+          as: "materials",
         },
       },
       {
@@ -162,9 +195,11 @@ exports.getProduct = async (req, res) => {
         },
       },
       { $sort: { selling_price: 1 } },
-      { $skip: req.query.pageNumber > 0 ? (req.query.pageNumber - 1) * 10 : 0 },
-      { $limit: 10 },
+      { $skip: pageNumber > 0 ? (pageNumber - 1) * 10 : 0 },
+      { $limit: parseInt(limit) || 10 },
     ]);
+
+    let materialFilter = new Set();
 
     // Discount Limit Comparison ==========
     data.map((row) => {
@@ -173,14 +208,19 @@ exports.getProduct = async (req, res) => {
           row.discount_limit = row.categories[0].discount_limit;
       }
       delete row.categories;
+      materialFilter.add(JSON.stringify(...row.materials));
+      delete row.materials;
       return row;
     });
+
+    // material filter add ==========
+    materialFilter = Array.from(materialFilter).map((row) => JSON.parse(row));
 
     if (data)
       return res.status(200).send({
         message: "Product list fetched successfully.",
         status: 200,
-        data,
+        data: { data, filter: { materialFilter } },
       });
     else
       return res.status(203).send({
@@ -203,7 +243,7 @@ exports.getProductDetails = async (req, res) => {
   try {
     // Consider size, material, range,
 
-    let { CID, DID,SKU } = req.query;
+    let { CID, DID, SKU } = req.query;
 
     // console.log(CID, DID,SKU)
     let query_user = [];
@@ -284,8 +324,8 @@ exports.getProductDetails = async (req, res) => {
       },
       {
         $addFields: {
-          totalReviews: { $size: "$reviews" }
-        }
+          totalReviews: { $size: "$reviews" },
+        },
       },
       // {
       //   $unwind: "$reviews"
@@ -300,7 +340,7 @@ exports.getProductDetails = async (req, res) => {
           from: "reviews",
           localField: "SKU",
           pipeline: [
-          { 
+            {
               $project: {
                 product_id: 1,
                 product_title: 1,
@@ -311,8 +351,8 @@ exports.getProductDetails = async (req, res) => {
                 _id: 1,
               },
             },
-            {$sort : {date : -1} },
-            {$limit : 5 }
+            { $sort: { date: -1 } },
+            { $limit: 5 },
           ],
           foreignField: "product_id",
           as: "review",
@@ -358,16 +398,14 @@ exports.getProductDetails = async (req, res) => {
           },
         },
       },
-  
     ]);
-
 
     if (productDetail.length < 1)
       return res.send({
         status: 200,
         message: ` ${req.query.SKU} No Product details found.`,
         data: productDetail,
-      });   
+      });
 
     // sum of discount limit
     if (productDetail[0].categories[0]) {
@@ -695,26 +733,45 @@ exports.getRelatedProduct = async (req, res) => {
 // for adding a review
 exports.addReview = async (req, res) => {
   try {
-    let {reviewer_name,reviewer_email,otp_code,review,product_id} = req.body;
+    let { reviewer_name, reviewer_email, otp_code, review, product_id } =
+      req.body;
 
-    if(!reviewer_name || !reviewer_email || !otp_code || !review || !product_id)
-    return res.status(203).send({
-      status : 203,
-      message : "Missing payload !!!"
-    })
-
-    let checkOtp = await otp.findOne({$and : [{assignTo : reviewer_email},{otp : otp_code},{status : false}]})
-
-    if(checkOtp)
-    {
-      await otp.findOneAndUpdate({$and : [{assignTo : reviewer_email},{otp : otp_code},{status : false}]},{status : true})
-    }
-    else
+    if (
+      !reviewer_name ||
+      !reviewer_email ||
+      !otp_code ||
+      !review ||
+      !product_id
+    )
       return res.status(203).send({
-        status : 203,
-        message : "Please provide the valid otp and email !!!"
-      })
+        status: 203,
+        message: "Missing payload !!!",
+      });
 
+    let checkOtp = await otp.findOne({
+      $and: [
+        { assignTo: reviewer_email },
+        { otp: otp_code },
+        { status: false },
+      ],
+    });
+
+    if (checkOtp) {
+      await otp.findOneAndUpdate(
+        {
+          $and: [
+            { assignTo: reviewer_email },
+            { otp: otp_code },
+            { status: false },
+          ],
+        },
+        { status: true }
+      );
+    } else
+      return res.status(203).send({
+        status: 203,
+        message: "Please provide the valid otp and email !!!",
+      });
 
     // console.log("Files >>>", req.files);
     // console.log("Files >>>", req.body);
@@ -742,14 +799,19 @@ exports.addReview = async (req, res) => {
     const data = reviewDB(req.body);
     const response = await data.save();
 
-    if (response) return res.status(200).send({ status : 200, message: "Review added successfully." });
-    else return res.status(203).send({ status : 203, message: "Something went wrong." });
-
+    if (response)
+      return res
+        .status(200)
+        .send({ status: 200, message: "Review added successfully." });
+    else
+      return res
+        .status(203)
+        .send({ status: 203, message: "Something went wrong." });
   } catch (error) {
     console.log("ERROR>>>", error);
     return res.status(500).send({
-      status : 500,
-      message: "Something went wrong."
+      status: 500,
+      message: "Something went wrong.",
     });
   }
 };
@@ -757,25 +819,28 @@ exports.addReview = async (req, res) => {
 // for listing  reviews
 exports.listReview = async (req, res) => {
   try {
+    let { product_id, limit } = req.query;
 
-    let {product_id,limit} = req.query;
+    let query = { product_id };
 
-    let query = {product_id}
-
-    if (!product_id)
-    query = {}
-    
+    if (!product_id) query = {};
 
     // console.log(query)
 
-    let data = await reviewDB.find({...query}).sort({data : -1}).limit(parseInt(limit) || 10);
+    let data = await reviewDB
+      .find({ ...query })
+      .sort({ data: -1 })
+      .limit(parseInt(limit) || 10);
 
-    if(data)
-      return res.status(200).send({status : 200, message : `Reviews fetched successfully.`,data})
-    
+    if (data)
+      return res
+        .status(200)
+        .send({ status: 200, message: `Reviews fetched successfully.`, data });
   } catch (error) {
-    console.log(error)
-    return res.status(500).send({status : 500, message : "Something went wrong !!!" })
+    console.log(error);
+    return res
+      .status(500)
+      .send({ status: 500, message: "Something went wrong !!!" });
   }
 };
 
@@ -790,29 +855,29 @@ exports.verifyReview = async (req, res) => {
       });
 
     const reqx =
-    /^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9-]+(?:\.[a-zA-Z0-9-]+)*$/;
+      /^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9-]+(?:\.[a-zA-Z0-9-]+)*$/;
 
-  if (!reqx.test(reviewer_email))
-    return res.status(203).send({
-      status: 203,
-      message: "Please provide the valid email address !!!",
-    });
-      
-    // inserting the OTP 
+    if (!reqx.test(reviewer_email))
+      return res.status(203).send({
+        status: 203,
+        message: "Please provide the valid email address !!!",
+      });
+
+    // inserting the OTP
     const otpCode = Math.floor(100000 + Math.random() * 900000);
-    
+
     let insertOtp = otp({
-      otp : otpCode,
-      assignTo : reviewer_email
-    })
+      otp: otpCode,
+      assignTo: reviewer_email,
+    });
 
     insertOtp = await insertOtp.save();
 
-    if(!insertOtp)
-    return res.status(203).send({
-      status: 203,
-      message: "Sorry, APIs getting out of order !!!",
-    });
+    if (!insertOtp)
+      return res.status(203).send({
+        status: 203,
+        message: "Sorry, APIs getting out of order !!!",
+      });
 
     // send mail with defined transport object
     let response = await transporter.sendMail({
@@ -843,11 +908,8 @@ exports.verifyReview = async (req, res) => {
   }
 };
 
-
 // async function lets(){
 //   console.log(await otp.find())
 // }
 
 // lets()
-
-
