@@ -33,13 +33,6 @@ exports.getProduct = async (req, res) => {
     if (CID) query_user = ["$CID", CID];
     else query_user = ["$DID", DID];
 
-    // console.log(query_user);
-
-    if (req.query.filter) {
-      filter = JSON.parse(req.query.filter);
-    }
-    // //console.log(filter)
-
     let query = {};
     let filterArray = [];
 
@@ -195,7 +188,7 @@ exports.getProduct = async (req, res) => {
         },
       },
       { $sort: { selling_price: 1 } },
-      { $skip: pageNumber > 0 ? (pageNumber - 1) * 10 : 0 },
+      { $skip: pageNumber > 0 ? (pageNumber - 1) * (parseInt(limit) || 10) : 0 },
       { $limit: parseInt(limit) || 10 },
     ]);
 
@@ -303,7 +296,12 @@ exports.getProductDetails = async (req, res) => {
           localField: "ACIN",
           pipeline: [
             {
+              $match : {SKU : {$ne : SKU}}
+            },
+            {
               $project: {
+                product_image: 1,
+                selling_price: 1,
                 SKU: 1,
                 product_title: 1,
                 _id: 1,
@@ -327,14 +325,6 @@ exports.getProductDetails = async (req, res) => {
           totalReviews: { $size: "$reviews" },
         },
       },
-      // {
-      //   $unwind: "$reviews"
-      // },
-      // {
-      //   $addFields: {
-      //     averageRating: { $avg: {$toInt : "$reviews.rating"} },
-      //   }
-      // },
       {
         $lookup: {
           from: "reviews",
@@ -568,14 +558,91 @@ exports.listCategories = async (req, res) => {
 
 exports.listCatalog = async (req, res) => {
   try {
-    let { catalog_type, limit } = req.query;
-    let list = "";
+    let { 
+      catalog_type,limit,
+      pageNumber,
+      category_name,
+      product_title,
+      price,
+      length,
+      breadth,
+      height,
+      material} = req.body;
 
-    if (catalog_type) filter = { catalog_type: req.query.catalog_type };
+      let list = "";
+    let query = {};
+    let catalog_query = {};
+    let filterArray = [];
+
+    if (catalog_type && catalog_type.length > 0) {
+      filterArray.push({
+        $or: catalog_type.map((val) => {
+          return { catalog_type: { $regex: val, $options: "i" } };
+        }),
+      });
+      catalog_query = filterArray[0];
+      filterArray.pop();
+    }
+
+
+    if (product_title)
+      filterArray.push({
+        product_title: {
+          $regex: product_title.includes(")")
+            ? product_title.split(")")[1]
+            : product_title,
+          $options: "i",
+        },
+      });
+
+    if (price) {
+      filterArray.push({
+        $and: [
+          { selling_price: { $gte: price.min } },
+          { selling_price: { $lte: price.max } },
+        ],
+      });
+    }
+    if (length) {
+      filterArray.push({
+        $and: [
+          { length_main: { $gte: length.min } },
+          { length_main: { $lte: length.max } },
+        ],
+      });
+    }
+
+    if (breadth) {
+      filterArray.push({
+        $and: [
+          { breadth: { $gte: breadth.min } },
+          { breadth: { $lte: breadth.max } },
+        ],
+      });
+    }
+    if (height) {
+      filterArray.push({
+        $and: [
+          { height: { $gte: height.min } },
+          { height: { $lte: height.max } },
+        ],
+      });
+    }
+    if (material && material.length > 0) {
+      filterArray.push({
+        $or: material.map((val) => {
+          return { primary_material: { $regex: val, $options: "i" } };
+        }),
+      });
+    }
+
+    if (filterArray.length > 0) query = { $and: filterArray };
+
+    console.log(query,catalog_query)
 
     // list = await catalog.find(filter).limit(10);
     list = await catalog.aggregate([
-      { $match: { catalog_type } },
+      { $match:  catalog_query },
       {
         $project: {
           __v: 0,
@@ -587,7 +654,15 @@ exports.listCatalog = async (req, res) => {
           localField: "SKU",
           pipeline: [
             {
+              $match : query
+            },
+            {
               $project: {
+                product_title: 1,
+                length : 1,
+                breadth : 1,
+                height : 1,
+                primary_material: 1,
                 product_image: 1,
                 selling_price: 1,
                 _id: 0,
@@ -598,10 +673,14 @@ exports.listCatalog = async (req, res) => {
           as: "product",
         },
       },
+      { $skip: pageNumber > 0 ? (pageNumber - 1) * (parseInt(limit) || 10) : 0 },
       {
         $limit: parseInt(limit) || 10,
       },
     ]);
+
+    if(list.length > 0)
+    list = list.filter(row=>row.product.length > 0)
 
     if (list) {
       res.send({
@@ -733,13 +812,12 @@ exports.getRelatedProduct = async (req, res) => {
 // for adding a review
 exports.addReview = async (req, res) => {
   try {
-    let { reviewer_name, reviewer_email, otp_code, review, product_id } =
+    let { reviewer_name, reviewer_email, review, product_id } =
       req.body;
 
     if (
       !reviewer_name ||
       !reviewer_email ||
-      !otp_code ||
       !review ||
       !product_id
     )
@@ -748,30 +826,30 @@ exports.addReview = async (req, res) => {
         message: "Missing payload !!!",
       });
 
-    let checkOtp = await otp.findOne({
-      $and: [
-        { assignTo: reviewer_email },
-        { otp: otp_code },
-        { status: false },
-      ],
-    });
+    // let checkOtp = await otp.findOne({
+    //   $and: [
+    //     { assignTo: reviewer_email },
+    //     { otp: otp_code },
+    //     { status: false },
+    //   ],
+    // });
 
-    if (checkOtp) {
-      await otp.findOneAndUpdate(
-        {
-          $and: [
-            { assignTo: reviewer_email },
-            { otp: otp_code },
-            { status: false },
-          ],
-        },
-        { status: true }
-      );
-    } else
-      return res.status(203).send({
-        status: 203,
-        message: "Please provide the valid otp and email !!!",
-      });
+    // if (checkOtp) {
+      // await otp.findOneAndUpdate(
+      //   {
+      //     $and: [
+      //       { assignTo: reviewer_email },
+      //       { otp: otp_code },
+      //       { status: false },
+      //     ],
+      //   },
+      //   { status: true }
+      // );
+    // } else
+    //   return res.status(203).send({
+    //     status: 203,
+    //     message: "Please provide the valid otp and email !!!",
+    //   });
 
     // console.log("Files >>>", req.files);
     // console.log("Files >>>", req.body);
