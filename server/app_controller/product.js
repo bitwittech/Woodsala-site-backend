@@ -668,16 +668,49 @@ exports.listCatalog = async (req, res) => {
                 _id: 0,
               },
             },
+            {
+              $lookup: {
+                from: "primarymaterials",
+                localField: "primary_material",
+                pipeline: [
+                  {
+                    $group: {
+                      _id: "$_id",
+                      name: { $first: "$primaryMaterial_name" },
+                    },
+                  },
+                ],
+                foreignField: "primaryMaterial_name",
+                as: "materials",
+              },
+            }
           ],
           foreignField: "SKU",
           as: "product",
         },
       },
+     
       { $skip: pageNumber > 0 ? (pageNumber - 1) * (parseInt(limit) || 10) : 0 },
       {
         $limit: parseInt(limit) || 10,
       },
     ]);
+
+
+    let materialFilter = new Set();
+
+    list.map((row) => {
+      if(row.product.length > 0)
+      {
+        materialFilter.add(JSON.stringify(...row.product[0].materials));
+        // delete row.product[0].materials;
+      }
+      return row;
+    });
+
+    // material filter add ==========
+    materialFilter = Array.from(materialFilter).map((row) => JSON.parse(row));
+
 
     if(list.length > 0)
     list = list.filter(row=>row.product.length > 0)
@@ -686,13 +719,13 @@ exports.listCatalog = async (req, res) => {
       res.send({
         status: 200,
         message: "Catalog list fetched successfully.",
-        data: list,
+        data: {data : list, filter : {materialFilter}},
       });
     } else {
       res.status(203).send({
         status: 203,
         message: "Error occurred in fetching the list.",
-        data: [],
+        data: {},
       });
     }
   } catch (error) {
