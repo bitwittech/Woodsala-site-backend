@@ -7,7 +7,7 @@ const checkout = require("../app_controller/checkout");
 
 // middleware
 const { AuthJwt } = require("../middleware/auth");
-const { upload } = require("../middleware/url_encode");
+const { upload, jsonEncode } = require("../middleware/url_encode");
 
 require("dotenv").config();
 const route = require("express").Router();

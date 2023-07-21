@@ -10,6 +10,15 @@ const otp = require("../../database/models/verify");
 const transporter = require("../middleware/email_instance");
 // const review = require("../../database/models/");
 
+function filterParse(data,res){
+  try{
+    return JSON.parse(data)
+  }
+  catch (error) {
+   return false;
+  }
+}
+
 exports.getProduct = async (req, res) => {
   try {
     let {
@@ -19,14 +28,26 @@ exports.getProduct = async (req, res) => {
       pageNumber,
       category_name,
       product_title,
+      filter
+    } = req.query;
+    
+    if(filter)
+    {
+      filter = filterParse(filter,res)
+      if(!filter)
+      return res.status(500).send({
+        message: "Filter Parsing problem !!!",
+      });
+    }
+
+
+    let {
       price,
       length,
       breadth,
       height,
       material,
-    } = req.body;
-
-    console.log(req.body)
+    } = filter ? filter : {} ;
 
     let query_user = [];
 
@@ -103,9 +124,9 @@ exports.getProduct = async (req, res) => {
           product_title: { $first: "$product_title" },
           product_image: { $first: "$product_image" },
           featured_image: { $first: "$featured_image" },
-          length : {$first : "$length_main"},
-          breadth : {$first : "$breadth"},
-          height : {$first : "$height"},
+          length: { $first: "$length_main" },
+          breadth: { $first: "$breadth" },
+          height: { $first: "$height" },
           primary_material: { $first: "$primary_material" },
           product_description: { $first: "$product_description" },
           selling_price: { $first: "$selling_price" },
@@ -188,7 +209,9 @@ exports.getProduct = async (req, res) => {
         },
       },
       { $sort: { selling_price: 1 } },
-      { $skip: pageNumber > 0 ? (pageNumber - 1) * (parseInt(limit) || 10) : 0 },
+      {
+        $skip: pageNumber > 0 ? (pageNumber - 1) * (parseInt(limit) || 10) : 0,
+      },
       { $limit: parseInt(limit) || 10 },
     ]);
 
@@ -201,7 +224,7 @@ exports.getProduct = async (req, res) => {
           row.discount_limit = row.categories[0].discount_limit;
       }
       delete row.categories;
-      materialFilter.add(JSON.stringify(...row.materials));
+      row.materials.map((row)=>materialFilter.add(JSON.stringify(row))) 
       delete row.materials;
       return row;
     });
@@ -296,7 +319,7 @@ exports.getProductDetails = async (req, res) => {
           localField: "ACIN",
           pipeline: [
             {
-              $match : {SKU : {$ne : SKU}}
+              $match: { SKU: { $ne: SKU } },
             },
             {
               $project: {
@@ -558,32 +581,42 @@ exports.listCategories = async (req, res) => {
 
 exports.listCatalog = async (req, res) => {
   try {
-    let { 
-      catalog_type,limit,
+
+    let {
+      limit,
       pageNumber,
       category_name,
       product_title,
+      filter
+    } = req.query;
+    
+    if(filter)
+    {
+      filter = filterParse(filter,res)
+      if(!filter)
+      return res.status(500).send({
+        message: "Filter Parsing problem !!!",
+      });
+    }
+
+
+    let {
+      catalog_type,
       price,
       length,
       breadth,
       height,
-      material} = req.body;
+      material,
+    } = filter ? filter : {} ;
 
-      let list = "";
+
+    let list = "";
     let query = {};
     let catalog_query = {};
     let filterArray = [];
 
-    if (catalog_type && catalog_type.length > 0) {
-      filterArray.push({
-        $or: catalog_type.map((val) => {
-          return { catalog_type: { $regex: val, $options: "i" } };
-        }),
-      });
-      catalog_query = filterArray[0];
-      filterArray.pop();
-    }
-
+    if (catalog_type && catalog_type.length > 0) 
+      catalog_query = { catalog_type: { $in: [...catalog_type] } }
 
     if (product_title)
       filterArray.push({
@@ -638,11 +671,9 @@ exports.listCatalog = async (req, res) => {
 
     if (filterArray.length > 0) query = { $and: filterArray };
 
-    console.log(query,catalog_query)
-
     // list = await catalog.find(filter).limit(10);
     list = await catalog.aggregate([
-      { $match:  catalog_query },
+      { $match: catalog_query },
       {
         $project: {
           __v: 0,
@@ -654,14 +685,14 @@ exports.listCatalog = async (req, res) => {
           localField: "SKU",
           pipeline: [
             {
-              $match : query
+              $match: query,
             },
             {
               $project: {
                 product_title: 1,
-                length : 1,
-                breadth : 1,
-                height : 1,
+                length: 1,
+                breadth: 1,
+                height: 1,
                 primary_material: 1,
                 product_image: 1,
                 selling_price: 1,
@@ -683,43 +714,39 @@ exports.listCatalog = async (req, res) => {
                 foreignField: "primaryMaterial_name",
                 as: "materials",
               },
-            }
+            },
           ],
           foreignField: "SKU",
           as: "product",
         },
       },
-     
-      { $skip: pageNumber > 0 ? (pageNumber - 1) * (parseInt(limit) || 10) : 0 },
+
+      {
+        $skip: pageNumber > 0 ? (pageNumber - 1) * (parseInt(limit) || 10) : 0,
+      },
       {
         $limit: parseInt(limit) || 10,
       },
     ]);
 
-
     let materialFilter = new Set();
 
     list.map((row) => {
-      if(row.product.length > 0)
-      {
-        materialFilter.add(JSON.stringify(...row.product[0].materials));
-        // delete row.product[0].materials;
-      }
+      if (row.product.length > 0)
+        row.product[0].materials.map((row)=>materialFilter.add(JSON.stringify(row)))
       return row;
     });
 
     // material filter add ==========
     materialFilter = Array.from(materialFilter).map((row) => JSON.parse(row));
 
-
-    if(list.length > 0)
-    list = list.filter(row=>row.product.length > 0)
+    if (list.length > 0) list = list.filter((row) => row.product.length > 0);
 
     if (list) {
       res.send({
         status: 200,
         message: "Catalog list fetched successfully.",
-        data: {data : list, filter : {materialFilter}},
+        data: { data: list, filter: { materialFilter } },
       });
     } else {
       res.status(203).send({
@@ -845,15 +872,9 @@ exports.getRelatedProduct = async (req, res) => {
 // for adding a review
 exports.addReview = async (req, res) => {
   try {
-    let { reviewer_name, reviewer_email, review, product_id } =
-      req.body;
+    let { reviewer_name, reviewer_email, review, product_id } = req.body;
 
-    if (
-      !reviewer_name ||
-      !reviewer_email ||
-      !review ||
-      !product_id
-    )
+    if (!reviewer_name || !reviewer_email || !review || !product_id)
       return res.status(203).send({
         status: 203,
         message: "Missing payload !!!",
@@ -868,16 +889,16 @@ exports.addReview = async (req, res) => {
     // });
 
     // if (checkOtp) {
-      // await otp.findOneAndUpdate(
-      //   {
-      //     $and: [
-      //       { assignTo: reviewer_email },
-      //       { otp: otp_code },
-      //       { status: false },
-      //     ],
-      //   },
-      //   { status: true }
-      // );
+    // await otp.findOneAndUpdate(
+    //   {
+    //     $and: [
+    //       { assignTo: reviewer_email },
+    //       { otp: otp_code },
+    //       { status: false },
+    //     ],
+    //   },
+    //   { status: true }
+    // );
     // } else
     //   return res.status(203).send({
     //     status: 203,

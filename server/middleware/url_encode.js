@@ -41,3 +41,57 @@ const storage = multer.diskStorage({
     { name: "review_images" },
   ]);
   
+
+  
+  exports.jsonEncode = (req,res,next) => {
+    try {
+      let {
+        price,
+        length,
+        breadth,
+        height,
+        material,
+      } = req.query;
+
+      if(price)
+      {
+        price= JSON.stringify(price)
+        price= JSON.parse(price)
+      }
+
+      if(length)
+      {
+        length= JSON.stringify(length)
+        length= JSON.parse(length)
+      }
+
+      if(breadth)
+      {
+        breadth= JSON.stringify(breadth)
+        breadth= JSON.parse(breadth)
+      }
+
+      if(height)
+      {
+        height= JSON.stringify(height)
+        height= JSON.parse(height)
+      }
+
+      if(material)
+      {
+        material= JSON.stringify(material)
+        material= JSON.parse(material)
+      }
+
+req.data = {...req.query,price,
+  length,
+  breadth,
+  height,
+  material}
+  
+return next()
+    } catch (error) {
+      
+    }
+  };
+  
