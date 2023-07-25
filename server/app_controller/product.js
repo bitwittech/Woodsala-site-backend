@@ -5,6 +5,9 @@ const product = require("../../database/models/product");
 const catalog = require("../../database/models/catalog");
 const reviewDB = require("../../database/models/review");
 const otp = require("../../database/models/verify");
+const customer = require("../../database/models/user");
+const guest = require("../../database/models/guest");
+
 
 // nodemalier instance
 const transporter = require("../middleware/email_instance");
@@ -19,8 +22,22 @@ function filterParse(data,res){
   }
 }
 
+
+var priceRange = [
+  "500-2000",
+  "2000-5000",
+  "5000-10000",
+  "10000-50000",
+  "above 50000",
+]
+
+
+
 exports.getProduct = async (req, res) => {
   try {
+
+    
+    // console.log(req.body)
     let {
       CID,
       DID,
@@ -29,8 +46,9 @@ exports.getProduct = async (req, res) => {
       category_name,
       product_title,
       filter
-    } = req.query;
+    } = req.body;
     
+
     if(filter)
     {
       filter = filterParse(filter,res)
@@ -48,6 +66,8 @@ exports.getProduct = async (req, res) => {
       height,
       material,
     } = filter ? filter : {} ;
+
+    console.log(price)
 
     let query_user = [];
 
@@ -73,13 +93,32 @@ exports.getProduct = async (req, res) => {
       });
 
     if (price) {
-      filterArray.push({
-        $and: [
-          { selling_price: { $gte: price.min } },
-          { selling_price: { $lte: price.max } },
+      // filterArray.push(...price.map((row)=>{return {
+      //   $or: [
+      //     { selling_price: { $gte: row.min } },
+      //     { selling_price: { $lte: row.max } },
+      //   ],
+      // }}));
+      
+      filterArray.push(...priceRange.map((row)=>{
+        if(price[row] === true && row.includes("above"))
+        return {
+        $or: [
+          { selling_price: { $gte: 50000 } },
         ],
-      });
+      }
+      else if (price[row] === true)
+      return {
+        $or: [
+          { selling_price: { $gte: parseInt(row.split('-')[0]) } },
+          { selling_price: { $lte: parseInt(row.split('-')[1]) } },
+        ],
+      }
+      else return {}
+    
+    }));
     }
+
     if (length) {
       filterArray.push({
         $and: [
@@ -114,6 +153,11 @@ exports.getProduct = async (req, res) => {
     }
 
     if (filterArray.length > 0) query = { $and: filterArray };
+
+    // making a checked array for price col 
+    // priceRange.map(row=>{
+    //   price[row] ? price[row]
+    // })
 
     // final aggregation computing
     let data = await product.aggregate([
@@ -236,7 +280,7 @@ exports.getProduct = async (req, res) => {
       return res.status(200).send({
         message: "Product list fetched successfully.",
         status: 200,
-        data: { data, filter: { materialFilter } },
+        data: { data, filter: { materialFilter, price } },
       });
     else
       return res.status(203).send({
@@ -254,6 +298,7 @@ exports.getProduct = async (req, res) => {
 };
 
 exports.getProductDetails = async (req, res) => {
+  // reviewDB.collection.drop()
   if (req.query === {})
     return res.status(404).send({ message: "Please Provide the product id." });
   try {
@@ -271,30 +316,27 @@ exports.getProductDetails = async (req, res) => {
     let productDetail = await product.aggregate([
       { $match: { SKU: SKU } },
       {
-        $group: {
-          _id: "$_id",
-          ACIN: { $first: "$ACIN" },
-          product_title: { $first: "$product_title" },
-          product_image: { $first: "$product_image" },
-          featured_image: { $first: "$featured_image" },
-          selling_price: { $first: "$selling_price" },
-          selling_points: { $first: "$selling_points" },
-          showroom_price: { $first: "$showroom_price" },
-          discount_limit: { $first: "$discount_limit" },
-          SKU: { $first: "$SKU" },
-          category_id: { $first: "$category_id" },
-          category_name: { $first: "$category_name" },
-          sub_category_name: { $first: "$sub_category_name" },
-          length_main: { $first: "$length_main" },
-          height: { $first: "$height" },
-          breadth: { $first: "$breadth" },
-          primary_material: { $first: "$primary_material" },
-          polish: { $first: "$polish" },
-          // fabric: { $first: "$fabric" },
-          polish_time: { $first: "$polish_time" },
-          manufacturing_time: { $first: "$manufacturing_time" },
-          // fitting: { $first: "$fitting" },
-          // fitting_name: { $first: "$fitting_name" },
+        $project: {
+          _id: 1,
+          ACIN: 1,
+          product_title: 1,
+          product_image: 1,
+          featured_image: 1,
+          selling_price: 1,
+          selling_points: 1,
+          showroom_price: 1,
+          discount_limit: 1,
+          SKU: 1,
+          category_id: 1,
+          category_name: 1,
+          sub_category_name: 1,
+          length_main: 1,
+          height: 1,
+          breadth: 1,
+          primary_material: 1,
+          polish: 1,
+          polish_time: 1,
+          manufacturing_time: 1,
         },
       },
       {
@@ -339,6 +381,24 @@ exports.getProductDetails = async (req, res) => {
         $lookup: {
           from: "reviews",
           localField: "SKU",
+          pipeline : [
+            {
+              $project:{
+                CID : 1,
+                DID : 1,
+                product_id : 1,
+                rating : 1,
+                review : 1,
+                review_title : 1,
+                review_images : 1,
+                review_videos : 1,
+                admin_reply : 1,
+                yourTube_url : 1,
+                reviewer_name : 1,
+                reviewer_email : 1,
+              }
+            }
+          ],
           foreignField: "product_id",
           as: "reviews",
         },
@@ -353,22 +413,13 @@ exports.getProductDetails = async (req, res) => {
           from: "reviews",
           localField: "SKU",
           pipeline: [
-            {
-              $project: {
-                product_id: 1,
-                product_title: 1,
-                rating: 1,
-                review_title: 1,
-                review: 1,
-                reviewer_name: 1,
-                _id: 1,
-              },
-            },
-            { $sort: { date: -1 } },
-            { $limit: 5 },
+            {$group:{
+              _id : "$product_id",
+              avgRating : {$avg : {$toInt : "$rating"} }
+            }},
           ],
           foreignField: "product_id",
-          as: "review",
+          as: "avgReview",
         },
       },
       {
@@ -588,7 +639,7 @@ exports.listCatalog = async (req, res) => {
       category_name,
       product_title,
       filter
-    } = req.query;
+    } = req.body;
     
     if(filter)
     {
@@ -628,14 +679,34 @@ exports.listCatalog = async (req, res) => {
         },
       });
 
-    if (price) {
-      filterArray.push({
-        $and: [
-          { selling_price: { $gte: price.min } },
-          { selling_price: { $lte: price.max } },
-        ],
-      });
-    }
+      
+      if (price) {
+        // filterArray.push(...price.map((row)=>{return {
+        //   $or: [
+        //     { selling_price: { $gte: row.min } },
+        //     { selling_price: { $lte: row.max } },
+        //   ],
+        // }}));
+        
+        filterArray.push(...priceRange.map((row)=>{
+          if(price[row] === true && row.includes("above"))
+          return {
+          $or: [
+            { selling_price: { $gte: 50000 } },
+          ],
+        }
+        else if (price[row] === true)
+        return {
+          $or: [
+            { selling_price: { $gte: parseInt(row.split('-')[0]) } },
+            { selling_price: { $lte: parseInt(row.split('-')[1]) } },
+          ],
+        }
+        else return {}
+      
+      }));
+      }
+  
     if (length) {
       filterArray.push({
         $and: [
@@ -746,7 +817,7 @@ exports.listCatalog = async (req, res) => {
       res.send({
         status: 200,
         message: "Catalog list fetched successfully.",
-        data: { data: list, filter: { materialFilter } },
+        data: { data: list, filter: { materialFilter, price } },
       });
     } else {
       res.status(203).send({
@@ -872,13 +943,26 @@ exports.getRelatedProduct = async (req, res) => {
 // for adding a review
 exports.addReview = async (req, res) => {
   try {
-    let { reviewer_name, reviewer_email, review, product_id } = req.body;
+    let { DID,CID ,review, product_id } = req.body;
 
-    if (!reviewer_name || !reviewer_email || !review || !product_id)
+    if ((!DID && !CID) || !review || !product_id)
       return res.status(203).send({
         status: 203,
         message: "Missing payload !!!",
       });
+
+      let userData={};
+
+    if(CID)
+    userData= await customer.findOne({CID},{username: 1,email:1})
+    else 
+    userData= await guest.findOne({DID},{username: 1,email:1})
+
+    if(userData)
+    {
+      req.body.reviewer_name = userData.username 
+      req.body.reviewer_email = userData.email 
+    }
 
     // let checkOtp = await otp.findOne({
     //   $and: [

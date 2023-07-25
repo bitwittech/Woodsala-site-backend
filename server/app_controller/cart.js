@@ -3,7 +3,7 @@ require("dotenv").config();
 const cart = require("../../database/models/cart");
 const wishlist = require("../../database/models/wishlist");
 const coupon = require("../../database/models/coupon");
-const product = require("../../database/models/product");
+const productDB = require("../../database/models/product");
 const user = require("../../database/models/user");
 const guest = require("../../database/models/guest");
 const order = require("../../database/models/order");
@@ -465,7 +465,7 @@ exports.getPromoCode = async (req, res) => {
 // Calculate Start =================================
 exports.calculate = async (req, res) => {
   try {
-    const { CID, DID, order_id, address_id, promo_id } = req.body;
+    const { CID, DID, order_id, address_id, promo_id, product_id, quantity} = req.body;
 
     if (!CID && !DID)
       return res.status(203).send({
@@ -474,49 +474,82 @@ exports.calculate = async (req, res) => {
       });
 
     let query = {};
+    let items = [];
 
     if (CID) query = { CID: String(CID) };
     else query = { DID: String(DID) };
 
-    // fetching the Cart Items
-    let items = await cart.aggregate([
-      { $match: query },
-      { $project: { __v: 0, _id: 0 } },
-      {
-        $lookup: {
-          from: "new_products",
-          localField: "product_id",
-          pipeline: [
-            {
-              $project: {
-                _id: 0,
-                selling_price: 1,
-                discount_limit: 1,
-                category_name: 1,
+    if(!product_id)
+    {
+      // fetching the Cart Items
+      items = await cart.aggregate([
+        { $match: query },
+        { $project: { __v: 0, _id: 0 } },
+        {
+          $lookup: {
+            from: "new_products",
+            localField: "product_id",
+            pipeline: [
+              {
+                $project: {
+                  _id: 0,
+                  selling_price: 1,
+                  discount_limit: 1,
+                  category_name: 1,
+                },
               },
-            },
-            {
-              $lookup: {
-                from: "categories",
-                localField: "category_name",
-                pipeline: [
-                  {
-                    $project: {
-                      _id: 0,
-                      discount_limit: 1,
+              {
+                $lookup: {
+                  from: "categories",
+                  localField: "category_name",
+                  pipeline: [
+                    {
+                      $project: {
+                        _id: 0,
+                        discount_limit: 1,
+                      },
                     },
-                  },
-                ],
-                foreignField: "category_name",
-                as: "category",
+                  ],
+                  foreignField: "category_name",
+                  as: "category",
+                },
               },
-            },
-          ],
-          foreignField: "SKU",
-          as: "product",
+            ],
+            foreignField: "SKU",
+            as: "product",
+          },
         },
-      },
-    ]);
+      ]);
+    }
+    else{
+      items = await productDB.aggregate([
+        {$match : {SKU : product_id}},
+        {
+            $project: {
+              _id: 0,
+              selling_price: 1,
+              discount_limit: 1,
+              category_name: 1,
+            },
+          },
+          {
+            $lookup: {
+              from: "categories",
+              localField: "category_name",
+              pipeline: [
+                {
+                  $project: {
+                    _id: 0,
+                    discount_limit: 1,
+                  },
+                },
+              ],
+              foreignField: "category_name",
+              as: "category",
+            },
+          },
+      ]);
+    }
 
     // console.log(">>>", items);
     let product = {
@@ -527,8 +560,9 @@ exports.calculate = async (req, res) => {
     };
     let discount = 0;
 
+
     // cart value calculation starts from here
-    if (items.length > 0)
+    if (items.length > 0 && !product_id)
       items = items.reduce(
         (sum, row) => {
           let SKU = row.product_id;
@@ -573,6 +607,48 @@ exports.calculate = async (req, res) => {
         },
         [0, 0]
       );
+    else if(items.length > 0 && product_id && quantity)
+    items = items.reduce(
+      (sum, row) => {
+
+        // building the product data {}
+        Object.assign(product.quantity, { [product_id]:quantity });
+        Object.assign(product.items, { [product_id]: [] });
+        Object.assign(product.product_price, {
+          [product_id]: row.selling_price,
+        });
+
+        // discount comparison
+        if (row.category[0]) {
+            if (
+              row.category[0].discount_limit <
+              row.discount_limit
+            ) {
+              discount =
+                (row.selling_price / 100) *
+                (row.category[0].discount_limit || 0);
+              Object.assign(product.discount_per_product, {
+                [product_id]: discount,
+              });
+              row.price = row.selling_price - discount;
+            } else {
+              discount =
+                (row.selling_price / 100) *
+                row.discount_limit;
+              Object.assign(product.discount_per_product, {
+                [product_id]: discount,
+              });
+              row.price = row.selling_price - discount;
+            }
+          }
+
+        sum[0] = row.selling_price *= quantity;
+        sum[1] = row.price *= quantity;
+
+        return sum;
+      },
+      [0, 0]
+    );
     else
       return res.status(203).send({
         status: 203,
@@ -586,6 +662,7 @@ exports.calculate = async (req, res) => {
       total: items[1],
       product,
     };
+
 
     let order_data = undefined;
 

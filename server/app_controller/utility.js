@@ -1,6 +1,8 @@
+require("dotenv").config();
 const banner = require("../../database/models/banner");
 const introBanner = require("../../database/models/introBanner");
-const category = require("../../database/models/categories");
+const pincode = require("../../database/models/pincode");
+const axios = require("axios");
 
 exports.getBanner = async (req, res) => {
   try {
@@ -63,36 +65,70 @@ exports.listMobileIntro = async (req, res) => {
     return res.status(500).send({ message: "Something went wrang !!!" });
   }
 };
-// exports.calculate = async (req, res) => {
-//     try {
 
-//       let {O} = req.query
+exports.getPinCode = async (req, res) => {
+  try {
+    let { pinCode } = req.query;
 
-//       if(!O) return res.status(203).send({
-//         status : 203,
-//         message : "Missing Order ID."
-//       })
+    if (!pinCode)
+      return res.status(203).send({
+        status: 203,
+        message: "Please provide the pin code.",
+        data: {
+          pincodeStatus: {},
+          pinCodeAddress: {},
+        },
+      });
 
-//       let orderDetails = await order.findOne({O},{product_price : 1,discount_per_product : 1,quantity : 1})
+    pinCode = parseInt(pinCode) 
 
-//       console.log(orderDetails)
+    const data = await pincode.findOne(
+      {
+        pincode: parseInt(pinCode),
+        delivery_status: true,
+      },
+      { pincode: 1, delivery_status: 1, _id: 0 }
+    );
 
-//       if(data)
-//         return res.send({
-//           status :200,
-//           message : "Intro banner for mobile fetched successfully.",
-//           data
-//         })
-//       else
-//         return res.status(203).send({
-//           status :203,
-//           message : "No banners found for mobile .",
-//           data
-//         })
+    if (data === {})
+      return res.status(200).send({
+        status: "200",
+        message: "Sorry, delivery is not possible on this pincode.",
+        data: {
+          pincodeStatus: {},
+          pinCodeAddress: {},
+        },
+      });
 
-//     } catch (err) {
-//       // console.log("error>>>", err);
-//       return res.status(500).send({ message: "Something went wrang !!!" });
-//     }
-//   };
+    let pinData = await axios.get(
+      `https://app.zipcodebase.com/api/v1/search?apikey=${process.env.PINCODE}&codes=${pinCode}`
+    );
 
+    if (pinData.status !== 200) pinData = {};
+    else pinData = pinData.data.results[pinCode][0];
+
+    if (data)
+      return res.send({
+        status: 200,
+        message: "Pincode Details fetched successfully.",
+        data: {
+          pincodeStatus: data,
+          pinCodeAddress: {
+            postal_code: pinData.postal_code,
+            country_code: pinData.country_code,
+            state: pinData.state,
+            province: pinData.province,
+          },
+        },
+      });
+    else
+      return res.status(203).send({
+        status: 203,
+        message: "No Pincode found.",
+        data,
+      });
+  } catch (err) {
+    console.log("error>>>", err);
+    return res.status(500).send({ message: "Something went wrang !!!" });
+  }
+};
