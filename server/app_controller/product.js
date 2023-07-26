@@ -31,7 +31,10 @@ var priceRange = [
   "above 50000",
 ]
 
+// [{"checked": false, "id": "1", "range": "500-2000"}, {"checked": false, "id": "2", "range": "2000-5000"}, {"checked": true, "id": "3", "range": 
+// "5000-10000"}, {"checked": false, "id": "4", "range": "10000-50000"}, {"checked": false, "id": "5", "range": "above 50000"}]
 
+// [{"_id": "64acbba92d70117d5b7953c0", "checked": false, "name": "Metal"}, {"_id": "64acbb922d70117d5b7953a5", "checked": false, "name": "Teak wood"}]
 
 exports.getProduct = async (req, res) => {
   try {
@@ -66,8 +69,8 @@ exports.getProduct = async (req, res) => {
       height,
       material,
     } = filter ? filter : {} ;
+    const priceShow = price;
 
-    console.log(price)
 
     let query_user = [];
 
@@ -93,30 +96,16 @@ exports.getProduct = async (req, res) => {
       });
 
     if (price) {
-      // filterArray.push(...price.map((row)=>{return {
-      //   $or: [
-      //     { selling_price: { $gte: row.min } },
-      //     { selling_price: { $lte: row.max } },
-      //   ],
-      // }}));
-      
-      filterArray.push(...priceRange.map((row)=>{
-        if(price[row] === true && row.includes("above"))
-        return {
-        $or: [
-          { selling_price: { $gte: 50000 } },
-        ],
-      }
-      else if (price[row] === true)
-      return {
-        $or: [
-          { selling_price: { $gte: parseInt(row.split('-')[0]) } },
-          { selling_price: { $lte: parseInt(row.split('-')[1]) } },
-        ],
-      }
-      else return {}
-    
-    }));
+
+      price = price.filter((row)=>row.checked)
+
+      price = price.map((row)=>{
+        if(row.range.includes("above"))
+        return { selling_price: { $gte: 50000 } }
+      else 
+      return { selling_price: {$gte: parseInt(row.range.split('-')[0]) , $lte: parseInt(row.range.split('-')[1])}}
+    })
+      filterArray.push({$or: price});
     }
 
     if (length) {
@@ -145,20 +134,19 @@ exports.getProduct = async (req, res) => {
       });
     }
     if (material && material.length > 0) {
+
+      material = material.filter(row=>row.checked);
+
       filterArray.push({
-        $or: material.map((val) => {
-          return { primary_material: { $regex: val, $options: "i" } };
+        $or: material.map((row) => {
+          return { primary_material: { $regex: row.name, $options: "i" } };
         }),
       });
     }
 
     if (filterArray.length > 0) query = { $and: filterArray };
 
-    // making a checked array for price col 
-    // priceRange.map(row=>{
-    //   price[row] ? price[row]
-    // })
-
+    
     // final aggregation computing
     let data = await product.aggregate([
       { $match: query },
@@ -280,7 +268,7 @@ exports.getProduct = async (req, res) => {
       return res.status(200).send({
         message: "Product list fetched successfully.",
         status: 200,
-        data: { data, filter: { materialFilter, price } },
+        data: { data, filter: { materialFilter, price : priceShow } },
       });
     else
       return res.status(203).send({
@@ -660,6 +648,8 @@ exports.listCatalog = async (req, res) => {
       material,
     } = filter ? filter : {} ;
 
+    const priceShow = price;
+
 
     let list = "";
     let query = {};
@@ -679,34 +669,21 @@ exports.listCatalog = async (req, res) => {
         },
       });
 
-      
+    
       if (price) {
-        // filterArray.push(...price.map((row)=>{return {
-        //   $or: [
-        //     { selling_price: { $gte: row.min } },
-        //     { selling_price: { $lte: row.max } },
-        //   ],
-        // }}));
-        
-        filterArray.push(...priceRange.map((row)=>{
-          if(price[row] === true && row.includes("above"))
-          return {
-          $or: [
-            { selling_price: { $gte: 50000 } },
-          ],
-        }
-        else if (price[row] === true)
-        return {
-          $or: [
-            { selling_price: { $gte: parseInt(row.split('-')[0]) } },
-            { selling_price: { $lte: parseInt(row.split('-')[1]) } },
-          ],
-        }
-        else return {}
-      
-      }));
+
+        price = price.filter((row)=>row.checked)
+  
+        price = price.map((row)=>{
+          if(row.range.includes("above"))
+          return { selling_price: { $gte: 50000 } }
+        else 
+        return { selling_price: {$gte: parseInt(row.range.split('-')[0]) , $lte: parseInt(row.range.split('-')[1])}}
+      })
+        filterArray.push({$or: price});
       }
   
+    
     if (length) {
       filterArray.push({
         $and: [
@@ -733,9 +710,12 @@ exports.listCatalog = async (req, res) => {
       });
     }
     if (material && material.length > 0) {
+
+      material = material.filter(row=>row.checked);
+
       filterArray.push({
-        $or: material.map((val) => {
-          return { primary_material: { $regex: val, $options: "i" } };
+        $or: material.map((row) => {
+          return { primary_material: { $regex: row.name, $options: "i" } };
         }),
       });
     }
@@ -817,7 +797,7 @@ exports.listCatalog = async (req, res) => {
       res.send({
         status: 200,
         message: "Catalog list fetched successfully.",
-        data: { data: list, filter: { materialFilter, price } },
+        data: { data: list, filter: { materialFilter, price : priceShow } },
       });
     } else {
       res.status(203).send({
