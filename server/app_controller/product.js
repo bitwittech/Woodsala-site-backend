@@ -23,14 +23,6 @@ function filterParse(data,res){
 }
 
 
-var priceRange = [
-  "500-2000",
-  "2000-5000",
-  "5000-10000",
-  "10000-50000",
-  "above 50000",
-]
-
 // [{"checked": false, "id": "1", "range": "500-2000"}, {"checked": false, "id": "2", "range": "2000-5000"}, {"checked": true, "id": "3", "range": 
 // "5000-10000"}, {"checked": false, "id": "4", "range": "10000-50000"}, {"checked": false, "id": "5", "range": "above 50000"}]
 
@@ -38,9 +30,6 @@ var priceRange = [
 
 exports.getProduct = async (req, res) => {
   try {
-
-    
-    // console.log(req.body)
     let {
       CID,
       DID,
@@ -143,9 +132,11 @@ exports.getProduct = async (req, res) => {
         }),
       });
     }
-
+    
+    filterArray = filterArray.filter(row=>row['$or'].length > 0)
+    
     if (filterArray.length > 0) query = { $and: filterArray };
-
+    
     
     // final aggregation computing
     let data = await product.aggregate([
@@ -624,6 +615,7 @@ exports.listCatalog = async (req, res) => {
     let {
       limit,
       pageNumber,
+      catalog_type,
       category_name,
       product_title,
       filter
@@ -637,10 +629,7 @@ exports.listCatalog = async (req, res) => {
         message: "Filter Parsing problem !!!",
       });
     }
-
-
     let {
-      catalog_type,
       price,
       length,
       breadth,
@@ -656,8 +645,8 @@ exports.listCatalog = async (req, res) => {
     let catalog_query = {};
     let filterArray = [];
 
-    if (catalog_type && catalog_type.length > 0) 
-      catalog_query = { catalog_type: { $in: [...catalog_type] } }
+    if (catalog_type) 
+      catalog_query = { catalog_type: catalog_type }
 
     if (product_title)
       filterArray.push({
@@ -720,8 +709,11 @@ exports.listCatalog = async (req, res) => {
       });
     }
 
+    filterArray = filterArray.filter(row=>row['$or'].length > 0)
+    
     if (filterArray.length > 0) query = { $and: filterArray };
 
+    
     // list = await catalog.find(filter).limit(10);
     list = await catalog.aggregate([
       { $match: catalog_query },
