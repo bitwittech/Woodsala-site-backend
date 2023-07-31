@@ -66,4 +66,8 @@ route.get("/listReviews",product.listReview)
 // pincode
 route.get("/getPincodeDetails",utility.getPinCode)
 
+// notifications
+route.post("/sendNotificationsMobile",upload,utility.sendNotificationsMobile);
+route.get("/listNotificationsMobile",utility.listNotificationsMobile);
+
 module.exports = route 

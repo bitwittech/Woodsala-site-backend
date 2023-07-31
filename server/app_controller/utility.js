@@ -1,6 +1,8 @@
 require("dotenv").config();
+const { query } = require("express");
 const banner = require("../../database/models/banner");
 const introBanner = require("../../database/models/introBanner");
+const notification = require("../../database/models/notifications");
 const pincode = require("../../database/models/pincode");
 const axios = require("axios");
 
@@ -80,7 +82,7 @@ exports.getPinCode = async (req, res) => {
         },
       });
 
-    pinCode = parseInt(pinCode) 
+    pinCode = parseInt(pinCode);
 
     const data = await pincode.findOne(
       {
@@ -130,5 +132,114 @@ exports.getPinCode = async (req, res) => {
   } catch (err) {
     console.log("error>>>", err);
     return res.status(500).send({ message: "Something went wrang !!!" });
+  }
+};
+
+// Notifications
+
+exports.sendNotificationsMobile = async (req, res) => {
+  try {
+    const { title, message, token, CID } = req.body;
+
+    if (!title || !message || !token)
+      return res.send(203).status({
+        status: 203,
+        message: "Missing Payload.",
+      });
+
+    // Replace 'YOUR_FCM_SERVER_KEY' with your actual FCM Server Key from the Firebase Console
+    const fcmServerKey = process.env.FCM_SERVER_KEY;
+
+    const fcmEndpoint = "https://fcm.googleapis.com/fcm/send";
+    const headers = {
+      "Content-Type": "application/json",
+      Authorization: `key=${fcmServerKey}`,
+    };
+    const data = {
+      to: token,
+      notification: {
+        title: title,
+        body: message,
+      },
+    };
+
+    // save the notification details in DB for Database records;
+    let SaveToDB = notification({
+      DID: token,
+      CID: CID,
+      message,
+      title,
+    });
+
+    // let SendToDevice = await axios.post(fcmEndpoint, data, { headers });
+
+    SaveToDB = await SaveToDB.save();
+      if (SaveToDB) {
+        console.log("Push notification sent successfully:");
+        return res
+          .status(200)
+          .send({
+            status: 200,
+            message: "Push notification sent successfully",
+          });
+      }
+
+    // the notification to the Firebase then mobile
+    // if (SendToDevice) {
+    //   SaveToDB = await SaveToDB.save();
+    //   if (SaveToDB) {
+    //     console.log("Push notification sent successfully:", response.data);
+    //     return res
+    //       .status(200)
+    //       .send({
+    //         status: 200,
+    //         message: "Push notification sent successfully",
+    //       });
+    //   }
+    // }
+  } catch (error) {
+    console.log(error);
+    return res.status(500).send({
+      status: 500,
+      message: "Something Went Wrong.",
+    });
+  }
+};
+
+exports.listNotificationsMobile = async (req, res) => {
+  try {
+    const { token, CID,limit,pageNumber } = req.query;
+
+    if ((!token && !CID))
+      return res.status(203).send({
+        status: 203,
+        message: "Missing Payload.",
+      });
+
+      let query = {DID : token}
+
+      if(CID)
+      query = {CID}
+
+    // save the notification details in DB for Database records;
+    let list = await notification.find(query).sort({createdAt : -1})
+    .skip(pageNumber > 0 ? (pageNumber - 1) * (parseInt(limit) || 10) : 0).limit(parseInt(limit)|| 5);
+
+      if (list) {
+        return res
+          .status(200)
+          .send({
+            status: 200,
+            message: "Push notification listed successfully",
+            data : list
+          });
+      }
+
+  } catch (error) {
+    console.log(error);
+    return res.status(500).send({
+      status: 500,
+      message: "Something Went Wrong.",
+    });
   }
 };
