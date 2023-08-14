@@ -23,7 +23,7 @@ let transporter = nodemailer.createTransport({
 exports.getProducts = async (req, res) => {
 
   try{
-  // console.log(req.query);
+  console.log(req.query);
   let filter = {};
 
   if (req.query.filter !== "undefined") {
@@ -90,6 +90,8 @@ exports.getProducts = async (req, res) => {
   }
 
   if (filterArray.length > 0) query = { $or: filterArray };
+
+  console.log(filterArray)
 
   // console.log(JSON.stringify(query));
 
