@@ -1,9 +1,9 @@
 const { default: mongoose } = require("mongoose");
 
 const cart = mongoose.Schema({
-   CID : {type: String},
+   CID : {type: String, default : ""},
    product_id : {type : String},
-   quantity : {type : Number} ,
+   quantity : {type : Number, default : 1} ,
    DID : {type : String, default : ""}
 })
 

@@ -1,3 +1,4 @@
+require("dotenv").config();
 const express = require('express');
 const app = express();
 // const port = process.env.PORT || 0; // for dynemically chaging the port
@@ -6,12 +7,26 @@ const bodyParser = require('body-parser')
 const path = require('path')
 const mongo = require('./database/dbConfig');
 const cors = require('cors')
-
+const session = require('express-session');
+const cookieParser = require('cookie-parser');
+const {saveSession} = require('./server/middleware/auth')
+// session for creating
+app.use(cookieParser());
+app.use(session({
+  secret: process.env.Session_Secrete,
+  resave: false,
+  saveUninitialized: true, 
+}));
 // middleware to parse the body 
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(bodyParser.json());
 
-app.use(cors())
+app.use(cors(
+  {
+    origin: ['http://localhost:3000','https://woodshala.in'],
+    credentials: true
+  }
+))
 
 // public path
 app.use(express.static(path.join(__dirname, 'public')));
@@ -36,6 +51,8 @@ app.get('/upload/:image', (req, res) => {
   const imagePath = path.join(__dirname, 'upload', image); // Replace 'image.jpg' with your image file name and extension
   res.sendFile(imagePath);
 });
+
+app.use(saveSession)
 
 // put the site on maintenance 
 // app.use((req, res, next) => res.render('maintenance'));

@@ -31,20 +31,20 @@ const crypto = require("crypto");
 // }
 
 exports.addCartItem = async (req, res) => {
-  // console.log(req.body)
-  await cart
+
+  try{
+  let response = await cart
     .findOneAndUpdate(
-      { $and: [{ CID: req.body.CID }, { product_id: req.body.product_id }] },
+      { $and: [{$or : [{ CID: req.body.CID },{DID : req.sessionID}]}, { product_id: req.body.product_id }] },
       req.body,
       { upsert: true }
     )
-    .then((response) => {
-      // console.log(response)
-      return res.send({ message: "Item added to the cart !!!" });
-    })
-    .catch((err) => {
-      return res.status(404).send({ message: "Something went wrong !!!" });
-    });
+
+      return res.status(200).send({ status : 200,message: "Item added to the cart !!!" });
+  }catch(err){
+    console.log(err);
+    return res.status(500).send({ status : 500, message: "Something went wrong." });
+  }
 };
 
 exports.removeCartItem = async (req, res) => {
@@ -53,24 +53,25 @@ exports.removeCartItem = async (req, res) => {
 
     const {CID,product_id} = req.query;
 
-    if(!CID && !product_id) return res.status(203).send('No details Found.')
+    if(!product_id) return res.status(203).send('No details Found.')
 
     let response = await cart.deleteMany({
-      $and: [{ CID: req.query.CID }, { product_id: req.query.product_id }],
+      $or: [{ CID: req.query.CID},{DID : req.sessionID }, { product_id: req.query.product_id }],
     })
 
       if (response.deletedCount > 0)
-        return res.send({ message: "Item removed from the cart !!!" });
-      else return res.status(203).send({ message: "No product found" });
+        return res.status(200).send({status : 200, message: "Item removed from the cart !!!" });
+      else return res.status(203).send({ status : 203, message: "No product found" });
 
   }catch(err){
     console.log(err)
-      return res.status(404).send({ message: "Something went wrong !!!" });
+      return res.status(500).send({status : 500, message: "Something went wrong !!!" });
     };
 };
 
 // get cart item
 exports.getCartItem = async (req, res) => {
+
   cart
     .find(req.query, { _id: 0 })
     .then((response) => {
@@ -84,9 +85,9 @@ exports.getCartItem = async (req, res) => {
 
 // get cart item
 exports.getDetails = async (req, res) => {
-  try {
-    // console.log(JSON.parse(req.query.products))
-    const products = JSON.parse(req.query.products);
+  try 
+{
+     const products = JSON.parse(req.query.products);
 
     const response = await Promise.all(
       products.map((search) => {
@@ -143,7 +144,7 @@ exports.updateQuantity = async (req, res) => {
     })
     .catch((err) => {});
 };
-
+ 
 // place an order
 
 exports.placeOrder = async (req, res) => {
@@ -378,7 +379,144 @@ exports.cod_limit = async(req,res)=>{
 
 }
 
-exports.testMail =async (req,res)=>{
- s
-  return res.send(response)
-}
+exports.getCartItemWithProduct = async(req, res) => {
+  try {
+      const { CID } = req.query;
+      const DID = req.sessionID;
+
+      console.log(CID,DID)
+      // console.log()
+
+      if (!CID && !DID)
+          return res.status(203).send({
+              status: 203,
+              message: "Missing Payload",
+          });
+
+      let query = {};
+
+      if (CID !== "undefined") query = { CID: String(CID) };
+      else query = { DID };
+
+     
+      let data = await cart.aggregate([
+        {
+          $match: query
+        },
+        {
+          $project : {_id : 0}
+        },
+        {
+          $lookup: {
+            from: "new_products", // The name of the products collection
+            localField: "product_id", // The field in the cart collection
+            foreignField: "SKU", // The field in the new_products collection
+            as: "productData" // The name of the field to store the joined product data
+          }
+        },
+        {
+          $unwind: "$productData" // Unwind the productData array to get individual product documents
+        },
+        {
+          $lookup: {
+            from: "categories", // The name of the categories collection
+            localField: "productData.category_name", // The field in the productData
+            foreignField: "category_name", // The field in the categories collection
+            as: "categoryData" // The name of the field to store the joined category data
+          }
+        },
+        {
+          $unwind: "$categoryData" // Unwind the categoryData array to get individual category documents
+        },
+        {
+          $addFields: {
+            effectiveDiscount: {
+              $min: [
+                { $multiply: ["$productData.discount_limit", 0.01] }, // Convert percentage to fraction
+                { $multiply: ["$categoryData.discount_limit", 0.01] } // Convert percentage to fraction
+              ]
+            }
+          }
+        },
+        {
+          $project: {
+            _id: 0,
+            product_id:1,
+            CID: 1,
+            quantity: 1,
+            totalPricePerItem: {
+              $multiply: [
+                "$quantity",
+                {
+                  $subtract: [
+                    "$productData.selling_price",
+                    { $multiply: ["$productData.selling_price", "$effectiveDiscount"] }
+                  ]
+                }
+              ]
+            },
+            productDetails: {
+              _id: "$productData._id",
+              SKU:"$productData.SKU",
+              title: "$productData.product_title",
+              price: "$productData.selling_price",
+              length : "$productData.length_main",
+              breadth : "$productData.breadth",
+              height : "$productData.height",
+              product_images : "$productData.product_image",
+              material : "$productData.primary_material",
+              // productDiscount: "$productData.discount_limit",
+              // categoryDiscount: "$categoryData.discount_limit",
+              featured_image: "$productData.featured_image",
+              effectiveDiscount: "$effectiveDiscount",
+              polish_time:"$productData.polish_time",
+              manufacturing_time:"$productData.manufacturing_time",
+            }
+          }
+        },
+        {
+          $group: {
+            _id: null,
+            cartItems: {
+              $push: {
+                _id: "$_id",
+                CID: "$CID",
+                productDetails: "$productDetails",
+                quantity: "$quantity",
+                totalPricePerItem: "$totalPricePerItem"
+              }
+            },
+            subtotal: { $sum: "$totalPricePerItem" }
+          }
+        },
+        {
+          $project: {
+            _id: 0,
+            cartItems: 1,
+            subtotal: 1,
+            total: "$subtotal"
+          }
+        }
+      ])
+
+      // console.log(data)
+
+      if (data)
+          return res.status(200).send({
+              status: 200,
+              message: "Cart items fetched successfully.",
+              data,
+          });
+      else
+          return res.status(203).send({
+              status: 203,
+              message: "No product found",
+              data: { data, cartCount: data.length },
+          });
+  } catch (err) {
+      console.log(err);
+      return res
+          .status(500)
+          .send({ status: 500, message: "Something went wrong !!!", data: {} });
+  }
+};

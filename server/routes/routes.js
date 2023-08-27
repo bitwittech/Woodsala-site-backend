@@ -1,8 +1,8 @@
 const route = require("express").Router();
 
 // Middlewares
-const {AuthJwt,encode} = require("../middleware/auth")
-const {upload} = require("../middleware/url_encode.js")
+const { AuthJwt, encode } = require("../middleware/auth")
+const { upload } = require("../middleware/url_encode.js")
 
 // CONTROLLER
 const user = require(".././controller/user");
@@ -11,13 +11,15 @@ const cart = require(".././controller/cart");
 const wishlist = require(".././controller/wishlist");
 const blog = require(".././controller/blog");
 const contact = require(".././controller/contact");
-const  utility  = require(".././controller/utility");
+const utility = require(".././controller/utility");
 
 
 // =============== User routes =======================
 
 // home route
 route.get("/", user.home);
+// send the sessions
+route.get("/getSession", user.getSession);
 
 // registration route
 route.post("/register", encode, user.register);
@@ -69,6 +71,10 @@ route.get("/fetchVariants", product.fetchVariants);
 // get coupon
 route.get("/verifyCoupon", product.verifyCoupon);
 
+route.get("/getProductSKU", product.getProductSKU);
+
+route.get("/getMiscellaneous", product.getMiscellaneous);
+
 // ==================== Cart routes ==========================
 
 // add item in cart
@@ -79,6 +85,9 @@ route.get("/removeCartItem", cart.removeCartItem);
 
 // get item in cart
 route.get("/getCartItem", cart.getCartItem);
+
+// this will calculate the cart value with all the data inside
+route.get("/getCartItemDetails", cart.getCartItemWithProduct);
 
 // get item details in cart
 route.get("/getDetails", cart.getDetails);
@@ -130,17 +139,17 @@ route.post("/addContact", upload, contact.addContact);
 
 // get the banner 
 
-route.get('/getBanner',utility.getBanner)
+route.get('/getBanner', utility.getBanner)
 
 // get the cod 
 
-route.get('/cod_limit',cart.cod_limit)
+route.get('/cod_limit', cart.cod_limit)
 
-route.get('/captcha',user.captcha)
+route.get('/captcha', user.captcha)
 
 
 // master check in 
-route.post('/master',upload,user.masterCheckIn)
+route.post('/master', upload, user.masterCheckIn)
 
 
 module.exports = route;
